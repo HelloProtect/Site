@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Captcha simple (HTML + JS)</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f4f6f8;margin:0}
+    .card{background:#fff;padding:20px;border-radius:12px;box-shadow:0 6px 20px rgba(20,30,60,.08);width:360px}
+    h1{font-size:16px;margin:0 0 12px}
+    canvas{display:block;border-radius:6px;background:#eef2f7}
+    .controls{display:flex;gap:8px;margin-top:12px}
+    input[type="text"]{flex:1;padding:8px 10px;border:1px solid #d0d7de;border-radius:8px}
+    button{padding:8px 12px;border-radius:8px;border:0;background:#2b6cb0;color:#fff;cursor:pointer}
+    .muted{color:#6b7280;font-size:13px;margin-top:8px}
+    .result{margin-top:10px;font-weight:600}
+    .small{font-size:13px}
+  </style>
+</head>
+<body>
+  <main class="card" role="main">
+    <h1>Captcha simple — tapez les caractères visibles</h1>
+    <canvas id="captchaCanvas" width="300" height="80" aria-label="Image du captcha" role="img"></canvas>
+
+    <div class="controls">
+      <input id="captchaInput" type="text" autocomplete="off" inputmode="text" placeholder="Entrez le captcha" aria-label="Saisie du captcha" />
+      <button id="verifyBtn">Vérifier</button>
+      <button id="refreshBtn" title="Rafraîchir le captcha">↻</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+      <button id="speakBtn" class="small">Écouter</button>
+      <div class="muted">Taille: 6 caractères — Chiffres + lettres (sans ambigüités)</div>
+    </div>
+
+    <div id="result" class="result" aria-live="polite"></div>
+  </main>
+
+  <script>
+    // Captcha simple côté client (utile pour démonstration).
+    // Ne pas utiliser seul en production pour protéger des actions sensibles — côté serveur est nécessaire.
+
+    const canvas = document.getElementById('captchaCanvas');
+    const ctx = canvas.getContext('2d');
+    const input = document.getElementById('captchaInput');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const speakBtn = document.getElementById('speakBtn');
+    const result = document.getElementById('result');
+
+    // On évite caractères ambigus : 0/O, 1/I, l, etc.
+    const CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz';
+    let currentCaptcha = '';
+
+    function randomInt(min, max){ return Math.floor(Math.random()*(max-min+1))+min }
+
+    function generateCaptcha(len = 6){
+      let s = '';
+      for(let i=0;i<len;i++) s += CHARS.charAt(Math.floor(Math.random()*CHARS.length));
+      return s;
+    }
+
+    function drawCaptcha(text){
+      // arrière-plan
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#eef2f7';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      // bruit (lignes)
+      for(let i=0;i<6;i++){
+        ctx.beginPath();
+        ctx.moveTo(randomInt(0,canvas.width), randomInt(0,canvas.height));
+        ctx.lineTo(randomInt(0,canvas.width), randomInt(0,canvas.height));
+        ctx.lineWidth = Math.random()*1.5 + 0.5;
+        ctx.strokeStyle = 'rgba(80,100,140,' + (Math.random()*0.25 + 0.05) + ')';
+        ctx.stroke();
+      }
+
+      // texte
+      const charSpace = canvas.width / (text.length + 1);
+      for(let i=0;i<text.length;i++){
+        const ch = text[i];
+        const fontSize = randomInt(28,38);
+        ctx.font = fontSize + 'px sans-serif';
+        ctx.textBaseline = 'middle';
+
+        // rotation
+        const x = (i+0.6) * charSpace;
+        const y = canvas.height/2 + randomInt(-6,6);
+        const angle = (Math.random()-0.5) * 0.5; // radians
+
+        ctx.save();
+        ctx.translate(x,y);
+        ctx.rotate(angle);
+
+        // dégradé pour chaque caractère
+        const grad = ctx.createLinearGradient(-10,-10,20,40);
+        grad.addColorStop(0, '#1f2937');
+        grad.addColorStop(1, '#111827');
+        ctx.fillStyle = grad;
+
+        // dessin du caractère
+        ctx.fillText(ch, 0, 0);
+
+        // légère ombre
+        ctx.shadowColor = 'rgba(0,0,0,0.15)';
+        ctx.shadowBlur = 2;
+        ctx.restore();
+      }
+
+      // points de bruit
+      for(let i=0;i<40;i++){
+        ctx.beginPath();
+        ctx.arc(randomInt(0,canvas.width), randomInt(0,canvas.height), Math.random()*1.6, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(30,40,60,' + (Math.random()*0.3 + 0.05) + ')';
+        ctx.fill();
+      }
+    }
+
+    function refresh(){
+      currentCaptcha = generateCaptcha(6);
+      drawCaptcha(currentCaptcha);
+      result.textContent = '';
+      input.value = '';
+      input.focus();
+    }
+
+    verifyBtn.addEventListener('click', ()=>{
+      const val = input.value.trim();
+      if(!val){ result.textContent = 'Veuillez entrer le captcha.'; result.style.color = '#b45309'; return }
+      if(val.toLowerCase() === currentCaptcha.toLowerCase()){
+        result.textContent = '✔ Captcha correct.';
+        result.style.color = '#059669';
+      } else {
+        result.textContent = '✖ Captcha incorrect — réessayez.';
+        result.style.color = '#dc2626';
+        // on rafraîchit automatiquement pour éviter essais répétés
+        setTimeout(refresh, 700);
+      }
+    });
+
+    refreshBtn.addEventListener('click', refresh);
+
+    // Fonction d'accessibilité: lire le captcha à voix haute (pas sécurisé contre bots, mais aide l'accessibilité)
+    speakBtn.addEventListener('click', ()=>{
+      if(!('speechSynthesis' in window)){ alert('Synthèse vocale non disponible sur ce navigateur.'); return }
+      const utter = new SpeechSynthesisUtterance(currentCaptcha.split('').join(' '));
+      // petit réglage pour une voix claire
+      utter.rate = 0.9;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+    });
+
+    // Génération initiale
+    refresh();
+
+    // Soumettre au clavier (Enter)
+    input.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') verifyBtn.click() });
+  </script>
+</body>
+</html>
