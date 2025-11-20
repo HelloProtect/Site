@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Recherche — Parodie</title>
+<style>
+  :root{
+    --bg:#f5f7fb;
+    --card:#ffffff;
+    --muted:#6b7280;
+  }
+  html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial}
+  body{background:linear-gradient(180deg,#ffffff 0%, #eef4ff 60%);display:flex;align-items:center;justify-content:center}
+  .container{width:100%;max-width:760px;padding:48px 24px;text-align:center}
+
+  /* logo parodique */
+  .logo{font-weight:800;font-size:64px;letter-spacing:6px;margin-bottom:18px;display:inline-block}
+  .logo span{display:inline-block}
+  .c1{color:#4285f4}
+  .c2{color:#ea4335}
+  .c3{color:#fbbc05}
+  .c4{color:#34a853}
+  .c5{color:#ff6bcb}
+
+  /* recherche */
+  .searchCard{background:var(--card);border-radius:12px;padding:18px 20px;box-shadow:0 6px 24px rgba(16,24,40,0.08);display:flex;align-items:center;gap:12px}
+  .searchCard input{flex:1;border:0;outline:none;font-size:18px;padding:10px 8px;border-radius:8px}
+  .btn{background:#0b63ff;color:#fff;border:0;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer}
+
+  /* footer */
+  .muted{color:var(--muted);margin-top:18px;font-size:14px}
+
+  /* overlay troll */
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .trollcard{width:min(680px,92%);background:linear-gradient(135deg,rgba(255,255,255,0.95),rgba(255,255,255,0.88));backdrop-filter:blur(6px);border-radius:16px;padding:28px;box-shadow:0 20px 40px rgba(8,12,24,0.18);text-align:center;transform:translateY(24px) scale(0.96);opacity:0;transition:transform .45s cubic-bezier(.22,.9,.35,1),opacity .35s}
+  .trollcard.show{transform:translateY(0) scale(1);opacity:1;pointer-events:auto}
+  .troll-title{font-size:28px;font-weight:800;margin-bottom:8px}
+  .troll-sub{color:var(--muted);margin-bottom:16px}
+
+  /* animation fun */
+  .troll-emoji{font-size:88px;display:inline-block;transform-origin:center;animation:spin 3s linear infinite}
+  @keyframes spin{0%{transform:rotate(0) translateY(0)}25%{transform:rotate(-12deg) translateY(-6px)}50%{transform:rotate(0) translateY(0)}75%{transform:rotate(12deg) translateY(-6px)}100%{transform:rotate(0) translateY(0)}}
+
+  .confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .confetti i{position:absolute;top:-10%;width:12px;height:18px;opacity:0.95;transform-origin:center;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(120vh) rotate(720deg);opacity:1}}
+
+  /* small responsive tweaks */
+  @media (max-width:520px){.logo{font-size:44px}.troll-emoji{font-size:64px}}
+</style>
+</head>
+<body>
+  <main class="container">
+    <div class="logo" aria-hidden>
+      <span class="c1">G</span>
+      <span class="c2">o</span>
+      <span class="c3">o</span>
+      <span class="c4">G</span>
+      <span class="c5">l</span>
+      <span class="c1">e</span>
+    </div>
+
+    <form class="searchCard" id="searchForm" onsubmit="return false;">
+      <input id="query" type="text" placeholder="Tape quelque chose..." autocomplete="off"/>
+      <button class="btn" id="searchBtn" type="button">Recherche</button>
+    </form>
+
+    <div class="muted">Ceci est une parodie. Aucune recherche n'est effectuée.</div>
+  </main>
+
+  <!-- overlay troll -->
+  <div class="overlay" id="overlay" aria-hidden>
+    <div class="trollcard" id="trollcard">
+      <div class="troll-emoji" id="emoji">🤡</div>
+      <div class="troll-title" id="title">Oups… tu t'es fait avoir !</div>
+      <div class="troll-sub" id="subtitle">Recherche détournée — clic encore pour rejouer</div>
+      <div style="margin-top:12px">
+        <button class="btn" id="playAgain">Rejouer</button>
+      </div>
+      <div class="confetti" id="confetti"></div>
+    </div>
+  </div>
+
+<script>
+  const searchBtn = document.getElementById('searchBtn');
+  const queryInput = document.getElementById('query');
+  const overlay = document.getElementById('overlay');
+  const trollcard = document.getElementById('trollcard');
+  const emoji = document.getElementById('emoji');
+  const title = document.getElementById('title');
+  const subtitle = document.getElementById('subtitle');
+  const playAgain = document.getElementById('playAgain');
+  const confetti = document.getElementById('confetti');
+
+  // safety: no real search or external redirects are performed
+  function launchTroll(){
+    // small random emoji selection for fun
+    const emojis = ['🤡','🦊','😼','👾','🐒','🌀','🫠'];
+    emoji.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+
+    // playful messages
+    const msgs = [
+      "T'as cliqué — bien joué !",
+      "La recherche a été remplacée par du trolling",
+      "Résultats : 1. Surprise ! 2. Encore une surprise",
+      "Erreur 404: sérieux introuvable"
+    ];
+    title.textContent = msgs[Math.floor(Math.random()*msgs.length)];
+
+    // subtitle shows the query typed (sanitized)
+    const q = queryInput.value.trim().slice(0,80);
+    subtitle.textContent = q ? `Tu as cherché : "${q}"` : 'Tu n'as rien écrit — parfait pour troll.';
+
+    // show card
+    trollcard.classList.add('show');
+
+    // generate confetti
+    createConfetti();
+
+    // play a short beep using WebAudio (user gesture present)
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';o.frequency.value = 880; // beep
+      g.gain.value = 0.02;
+      o.connect(g);g.connect(ctx.destination);
+      o.start();
+      setTimeout(()=>{o.frequency.value = 440},80);
+      setTimeout(()=>{o.stop();ctx.close()},380);
+    }catch(e){/* silent fallback */}
+  }
+
+  function createConfetti(){
+    confetti.innerHTML = '';
+    const colors = ['#ff4d6d','#ffd166','#06d6a0','#3a86ff','#9b5de5'];
+    for(let i=0;i<28;i++){
+      const el = document.createElement('i');
+      el.style.left = Math.random()*100 + '%';
+      el.style.width = 8 + Math.random()*12 + 'px';
+      el.style.height = 12 + Math.random()*18 + 'px';
+      el.style.background = colors[Math.floor(Math.random()*colors.length)];
+      el.style.top = (-10 - Math.random()*20) + '%';
+      el.style.transform = `rotate(${Math.random()*360}deg)`;
+      el.style.animationDuration = 1.2 + Math.random()*1.4 + 's';
+      el.style.opacity = 0.95;
+      confetti.appendChild(el);
+    }
+    // remove after animation
+    setTimeout(()=>{confetti.innerHTML='';},2600);
+  }
+
+  // attach events
+  searchBtn.addEventListener('click', ()=>{
+    // tiny UI 'thinking' effect
+    searchBtn.disabled = true;searchBtn.textContent = '...';
+    setTimeout(()=>{searchBtn.disabled=false;searchBtn.textContent='Recherche';launchTroll();},520);
+  });
+
+  // allow Enter key
+  queryInput.addEventListener('keydown', (e)=>{if(e.key==='Enter'){e.preventDefault();searchBtn.click();}});
+
+  // play again
+  playAgain.addEventListener('click', ()=>{trollcard.classList.remove('show');setTimeout(()=>{launchTroll();},180)});
+
+  // click outside to dismiss
+  overlay.addEventListener('click', (e)=>{if(e.target===overlay){trollcard.classList.remove('show');}}
+  );
+
+  // tiny accessibility: focus input on load
+  window.addEventListener('load', ()=>{queryInput.focus();});
+</script>
+</body>
+</html>
