@@ -11,10 +11,21 @@
       align-items: center;
       height: 100vh;
       margin: 0;
+      background: linear-gradient(135deg, #6a5acd, #00bfff);
       font-family: Arial, sans-serif;
-      font-size: 4rem;
       cursor: pointer;
       user-select: none;
+    }
+    #texte {
+      font-size: 6rem;
+      color: white;
+      font-weight: bold;
+      text-shadow: 0 0 15px rgba(0,0,0,0.4);
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .anim {
+      transform: scale(1.2);
+      opacity: 0.6;
     }
   </style>
 </head>
@@ -23,8 +34,13 @@
 
   <script>
     const texte = document.getElementById("texte");
+
     document.body.addEventListener("click", () => {
-      texte.textContent = texte.textContent === "Oui" ? "Non" : "Oui";
+      texte.classList.add("anim");
+      setTimeout(() => {
+        texte.textContent = texte.textContent === "Oui" ? "Non" : "Oui";
+        texte.classList.remove("anim");
+      }, 200);
     });
   </script>
 </body>
