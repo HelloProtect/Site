@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Toggle Oui/Non</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      font-size: 4rem;
+      cursor: pointer;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="texte">Oui</div>
+
+  <script>
+    const texte = document.getElementById("texte");
+    document.body.addEventListener("click", () => {
+      texte.textContent = texte.textContent === "Oui" ? "Non" : "Oui";
+    });
+  </script>
+</body>
+</html>
