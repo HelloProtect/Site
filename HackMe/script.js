@@ -1,41 +1,57 @@
 document.getElementById('hackButton').addEventListener('click', function() {
-    // 1. Ouvre une nouvelle fenêtre de petite taille
-    const newWindow = window.open("", "Hello404Window", "width=600,height=400,status=no,toolbar=no,menubar=no,location=no");
+    // Paramètres de la fenêtre pop-up
+    const windowWidth = 600;
+    const windowHeight = 400;
 
-    // Vérifie si l'ouverture a réussi (parfois bloquée par les navigateurs)
-    if (newWindow) {
-        // 2. Définit le contenu de la nouvelle fenêtre
+    // 1. Ouvre la nouvelle fenêtre
+    const hackWindow = window.open("", "Hello404Window", `width=${windowWidth},height=${windowHeight},status=no,toolbar=no,menubar=no,location=no`);
+
+    if (hackWindow) {
+        // --- Contenu de la fenêtre (identique à avant, pour afficher "Hello404") ---
         const content = `
             <!DOCTYPE html>
             <html lang="fr">
             <head>
                 <title>Hacked!</title>
                 <style>
-                    /* Reprend le CSS d'animation du fichier style.css */
-                    body { margin: 0; overflow: hidden; background-color: black; }
-                    .moving-text {
-                        position: absolute;
-                        font-size: 50px;
-                        font-family: monospace;
-                        color: green;
-                        text-shadow: 0 0 5px green;
-                        animation: moveRandomly 3s infinite alternate;
-                    }
-                    @keyframes moveRandomly {
-                        0% { top: 10%; left: 10%; transform: rotate(0deg); }
-                        100% { top: 80%; left: 80%; transform: rotate(360deg); }
-                    }
+                    body { margin: 0; overflow: hidden; background-color: black; color: green; display: flex; justify-content: center; align-items: center; font-size: 50px; font-family: monospace; }
                 </style>
             </head>
             <body>
-                <div class="moving-text">Hello404</div>
+                Hello404
             </body>
             </html>
         `;
+        hackWindow.document.write(content);
+        hackWindow.document.close();
+        // --------------------------------------------------------------------------
 
-        // Écrit le contenu dans la nouvelle fenêtre
-        newWindow.document.write(content);
-        newWindow.document.close();
+        // 2. Fonction pour faire bouger la fenêtre
+        function moveWindow() {
+            // Calcule une position X et Y aléatoire
+            const screenW = window.screen.availWidth - windowWidth;
+            const screenH = window.screen.availHeight - windowHeight;
+            
+            const newX = Math.floor(Math.random() * screenW);
+            const newY = Math.floor(Math.random() * screenH);
+
+            // Déplace la fenêtre vers cette nouvelle position
+            try {
+                hackWindow.moveTo(newX, newY);
+            } catch (e) {
+                // Ignore l'erreur si le navigateur empêche le déplacement
+                console.log("Le navigateur bloque la fonction moveTo.");
+            }
+        }
+
+        // 3. Déclenche le mouvement toutes les 100 millisecondes
+        const intervalId = setInterval(moveWindow, 100);
+
+        // Optionnel: Arrête le mouvement après 5 secondes (pour ne pas être trop intrusif)
+        setTimeout(() => {
+            clearInterval(intervalId);
+        }, 5000);
+
     } else {
         alert("Pop-up bloqué ! Débloquez les pop-ups pour voir l'effet 'hack'.");
     }
