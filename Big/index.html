@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Multi-Ouverture</title>
+</head>
+<body>
+
+    <h1>Bienvenue</h1>
+    <button id="helpButton">Help me</button>
+
+    <script>
+        // L'URL que l'on veut ouvrir 18 fois.
+        // On utilise document.location.href pour que ce soit la page actuelle.
+        const URL_A_OUVRIR = document.location.href;
+        const NOMBRE_OUVERTURES = 18;
+
+        document.getElementById('helpButton').addEventListener('click', function() {
+            // Boucle pour ouvrir la page le nombre de fois défini
+            for (let i = 0; i < NOMBRE_OUVERTURES; i++) {
+                // window.open() ouvre une nouvelle fenêtre/onglet
+                window.open(URL_A_OUVRIR, '_blank' + i);
+            }
+        });
+    </script>
+
+</body>
+</html>
