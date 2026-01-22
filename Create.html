@@ -2,280 +2,173 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Chaos Engine — GOD MODE</title>
+<title>Chaos God Mode EXTREME</title>
 <style>
-body {
-    margin:0;
-    overflow:hidden;
-    background:#050505;
-    font-family:monospace;
-    color:#eee;
+body{margin:0;overflow:hidden;background:#050505;font-family:monospace;color:#eee;}
+canvas{display:block;}
+#admin{
+    position:fixed;right:0;top:0;width:350px;height:100%;
+    background:rgba(10,10,10,0.96);border-left:1px solid #333;
+    padding:10px;transform:translateX(100%);transition:0.3s;overflow:auto;
 }
-canvas { display:block; }
-
-#admin {
-    position:fixed;
-    right:0;
-    top:0;
-    width:300px;
-    height:100%;
-    background:rgba(10,10,10,0.96);
-    border-left:1px solid #333;
-    padding:10px;
-    transform:translateX(100%);
-    transition:0.3s;
-}
-#admin.open { transform:translateX(0); }
-
-h3 {
-    margin:8px 0;
-    border-bottom:1px solid #333;
-    font-size:14px;
-}
-
-button, select, input {
-    width:100%;
-    margin:4px 0;
-    background:#111;
-    color:#ccc;
-    border:1px solid #444;
-}
-
-.locked {
-    opacity:0.4;
-    pointer-events:none;
-}
-
-.stat {
-    font-size:12px;
-    opacity:0.8;
-    white-space:pre;
-}
+#admin.open{transform:translateX(0);}
+h3{margin:8px 0;border-bottom:1px solid #333;font-size:14px;}
+button,select,input{width:100%;margin:4px 0;background:#111;color:#ccc;border:1px solid #444;}
+.locked{opacity:0.4;pointer-events:none;}
+.stat{font-size:12px;opacity:0.8;white-space:pre;}
 </style>
 </head>
 <body>
-
 <canvas id="c"></canvas>
 
 <div id="admin">
-    <h3>ADMIN PANEL</h3>
+<h3>ADMIN PANEL GOD MODE EXTREME</h3>
+<button onclick="paused=!paused">⏸ Pause</button>
+<button onclick="stepOnce()">⏭ Step</button>
+<button onclick="resetWorld()">🗑️ Reset Monde</button>
 
-    <button onclick="togglePause()">⏸ Pause</button>
-    <button onclick="stepOnce()">⏭ Step</button>
+<h3>Temps</h3>
+<input type="range" min="0.1" max="2" step="0.1" value="1" oninput="if(godMode) timeScale=parseFloat(this.value)">
 
-    <h3>Temps</h3>
-    <input type="range" min="0.1" max="2" step="0.1" value="1"
-        oninput="if(godMode) timeScale=parseFloat(this.value)">
+<h3>Gravité</h3>
+<input type="range" min="-2" max="2" step="0.1" value="0" oninput="if(godMode) gravity.x=parseFloat(this.value)">
+<input type="range" min="-2" max="2" step="0.1" value="0.6" oninput="if(godMode) gravity.y=parseFloat(this.value)">
+<button onclick="toggleGravityFollow=!toggleGravityFollow">🌪 Gravité souris</button>
 
-    <h3>Gravité</h3>
-    <input type="range" min="-2" max="2" step="0.1" value="0"
-        oninput="if(godMode) gravity.x=parseFloat(this.value)">
-    <input type="range" min="-2" max="2" step="0.1" value="0.6"
-        oninput="if(godMode) gravity.y=parseFloat(this.value)">
+<h3>Création</h3>
+<select onchange="if(godMode) createMode=this.value">
+<option value="normal">Normal</option>
+<option value="spray">Spray</option>
+<option value="line">Ligne</option>
+<option value="circle">Cercle</option>
+<option value="alive">Vivants</option>
+</select>
 
-    <h3>Création</h3>
-    <select onchange="if(godMode) createMode=this.value">
-        <option value="normal">Normal</option>
-        <option value="spray">Spray</option>
-        <option value="line">Ligne</option>
-        <option value="circle">Cercle</option>
-    </select>
+<h3>POUVOIRS WTF</h3>
+<button onclick="if(godMode) explode()">💥 Explosion</button>
+<button onclick="if(godMode) implode()">🌀 Implosion</button>
+<button onclick="if(godMode) mutate()">🎨 Mutation</button>
+<button onclick="if(godMode) fusion()">⚡ Fusion</button>
+<button onclick="if(godMode) split()">✨ Split</button>
+<button onclick="wtfMode=!wtfMode">🔥 Chaos Permanent</button>
 
-    <h3>WTF</h3>
-    <button onclick="if(godMode) explode()">Explosion</button>
-    <button onclick="if(godMode) implode()">Implosion</button>
-    <button onclick="if(godMode) mutate()">Mutation</button>
-
-    <h3>Stats</h3>
-    <div class="stat" id="stats"></div>
+<h3>Stats</h3>
+<div class="stat" id="stats"></div>
 </div>
 
 <script>
-/* ================= CORE ================= */
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+resize();window.onresize=resize;
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
 
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
-resize();
-window.onresize = resize;
+let balls=[];
+let gravity={x:0,y:0.6};
+let paused=false;
+let timeScale=1;
+let createMode="normal";
+let godMode=true;
+let wtfMode=false;
+let toggleGravityFollow=false;
 
-function resize(){
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
+let mouse={x:0,y:0,down:false};
+let grabbed=null;
+let history=[];
+
+/* ================== BALL ================== */
+class Ball{
+constructor(x,y,r=15,alive=false){
+this.x=x;this.y=y;this.vx=(Math.random()-0.5)*8;this.vy=(Math.random()-0.5)*8;
+this.r=r;this.color=`hsl(${Math.random()*360},80%,60%)`;this.alive=alive;
+}
+update(){
+if(grabbed===this&&mouse.down){this.x=mouse.x;this.y=mouse.y;this.vx=this.vy=0;return;}
+if(this.alive){
+this.vx+=(Math.random()-0.5)*0.3;this.vy+=(Math.random()-0.5)*0.3;}
+this.vx+=gravity.x*timeScale;
+this.vy+=gravity.y*timeScale;
+this.x+=this.vx*timeScale;this.y+=this.vy*timeScale;
+if(this.x<this.r||this.x>canvas.width-this.r)this.vx*=-0.9;
+if(this.y<this.r||this.y>canvas.height-this.r)this.vy*=-0.9;
+}
+draw(){
+ctx.beginPath();
+ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+ctx.fillStyle=this.color;
+ctx.fill();
+}
 }
 
-let balls = [];
-let gravity = { x: 0, y: 0.6 };
-let paused = false;
-let timeScale = 1;
-let createMode = "normal";
-let godMode = true;
-
-let mouse = { x:0, y:0, down:false };
-let grabbed = null;
-
-/* ================= OBJECT ================= */
-
-class Ball {
-    constructor(x,y,r=15){
-        this.x=x; this.y=y;
-        this.vx=(Math.random()-0.5)*8;
-        this.vy=(Math.random()-0.5)*8;
-        this.r=r;
-        this.color=`hsl(${Math.random()*360},80%,60%)`;
-    }
-
-    update(){
-        if(grabbed===this && mouse.down){
-            this.x=mouse.x;
-            this.y=mouse.y;
-            this.vx=this.vy=0;
-            return;
-        }
-
-        this.vx += gravity.x * timeScale;
-        this.vy += gravity.y * timeScale;
-
-        this.x += this.vx * timeScale;
-        this.y += this.vy * timeScale;
-
-        if(this.x<this.r||this.x>canvas.width-this.r) this.vx*=-0.9;
-        if(this.y<this.r||this.y>canvas.height-this.r) this.vy*=-0.9;
-    }
-
-    draw(){
-        ctx.beginPath();
-        ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
-        ctx.fillStyle=this.color;
-        ctx.fill();
-    }
-}
-
-/* ================= PHYSICS ================= */
-
+/* =============== COLLISIONS ================= */
 function collide(){
-    for(let i=0;i<balls.length;i++){
-        for(let j=i+1;j<balls.length;j++){
-            let a=balls[i], b=balls[j];
-            let dx=b.x-a.x, dy=b.y-a.y;
-            let d=Math.hypot(dx,dy);
-            if(d<a.r+b.r){
-                let nx=dx/d, ny=dy/d;
-                a.vx-=nx; a.vy-=ny;
-                b.vx+=nx; b.vy+=ny;
-            }
-        }
-    }
-}
+for(let i=0;i<balls.length;i++){
+for(let j=i+1;j<balls.length;j++){
+let a=balls[i],b=balls[j];
+let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+if(d<a.r+b.r){
+let nx=dx/d,ny=dy/d;
+a.vx-=nx*0.5;a.vy-=ny*0.5;
+b.vx+=nx*0.5;b.vy+=ny*0.5;
+}}}}
 
-/* ================= CREATE ================= */
-
+/* =============== CREATE ================= */
 function create(x,y){
-    if(createMode==="normal") balls.push(new Ball(x,y));
-    if(createMode==="spray") for(let i=0;i<6;i++) balls.push(new Ball(x,y));
-    if(createMode==="line") for(let i=0;i<5;i++) balls.push(new Ball(x+i*20,y));
-    if(createMode==="circle")
-        for(let a=0;a<Math.PI*2;a+=0.5)
-            balls.push(new Ball(x+Math.cos(a)*40,y+Math.sin(a)*40));
+if(createMode==="normal") balls.push(new Ball(x,y));
+if(createMode==="spray") for(let i=0;i<6;i++) balls.push(new Ball(x,y));
+if(createMode==="line") for(let i=0;i<5;i++) balls.push(new Ball(x+i*20,y));
+if(createMode==="circle") for(let a=0;a<Math.PI*2;a+=0.5) balls.push(new Ball(x+Math.cos(a)*40,y+Math.sin(a)*40));
+if(createMode==="alive") balls.push(new Ball(x,y,15,true));
 }
 
 /* ================= EVENTS ================= */
-
-canvas.onmousedown = e=>{
-    mouse.down=true;
-    mouse.x=e.clientX; mouse.y=e.clientY;
-
-    if(e.button===2){
-        balls = balls.filter(b => Math.hypot(mouse.x-b.x,mouse.y-b.y)>b.r);
-        return;
-    }
-
-    for(let i=balls.length-1;i>=0;i--){
-        let b=balls[i];
-        if(Math.hypot(mouse.x-b.x,mouse.y-b.y)<b.r){
-            grabbed=b; return;
-        }
-    }
-    create(mouse.x,mouse.y);
+canvas.onmousedown=e=>{
+mouse.down=true;mouse.x=e.clientX;mouse.y=e.clientY;
+if(e.button===2){balls=balls.filter(b=>Math.hypot(mouse.x-b.x,mouse.y-b.y)>b.r);return;}
+for(let i=balls.length-1;i>=0;i--){let b=balls[i];if(Math.hypot(mouse.x-b.x,mouse.y-b.y)<b.r){grabbed=b;return;}}
+create(mouse.x,mouse.y);
 };
-
-canvas.onmousemove = e=>{
-    mouse.x=e.clientX;
-    mouse.y=e.clientY;
-};
-
-canvas.onmouseup = ()=>{
-    mouse.down=false;
-    grabbed=null;
-};
-
-canvas.oncontextmenu = e=>e.preventDefault();
+canvas.onmousemove=e=>{mouse.x=e.clientX;mouse.y=e.clientY;};
+canvas.onmouseup=()=>{mouse.down=false;grabbed=null;};
+canvas.oncontextmenu=e=>e.preventDefault();
 
 /* ================= GOD ACTIONS ================= */
-
-function explode(){
-    balls.forEach(b=>{
-        b.vx+=(b.x-canvas.width/2)/10;
-        b.vy+=(b.y-canvas.height/2)/10;
-    });
-}
-function implode(){
-    balls.forEach(b=>{
-        b.vx-=(b.x-canvas.width/2)/10;
-        b.vy-=(b.y-canvas.height/2)/10;
-    });
-}
-function mutate(){
-    balls.forEach(b=>b.r*=0.7+Math.random());
-}
+function explode(){balls.forEach(b=>{b.vx+=(b.x-canvas.width/2)/10;b.vy+=(b.y-canvas.height/2)/10;});}
+function implode(){balls.forEach(b=>{b.vx-=(b.x-canvas.width/2)/10;b.vy-=(b.y-canvas.height/2)/10;});}
+function mutate(){balls.forEach(b=>{b.r*=0.7+Math.random();b.color=`hsl(${Math.random()*360},80%,60%)`;});}
+function fusion(){if(balls.length>1){let a=balls.pop(),b=balls.pop();let r=Math.sqrt(a.r*a.r+b.r*b.r);balls.push(new Ball((a.x+b.x)/2,(a.y+b.y)/2,r));}}
+function split(){for(let i=balls.length-1;i>=0;i--){let b=balls[i];if(b.r>10){balls.splice(i,1);for(let j=0;j<2;j++) balls.push(new Ball(b.x+Math.random()*10,b.y+Math.random()*10,b.r/1.5));}}}
 
 /* ================= CONTROL ================= */
-
-function togglePause(){ paused=!paused; }
-
-function stepOnce(){
-    paused=true;
-    update();
-    draw();
-}
-
-document.onkeydown = e=>{
-    if(e.key==="Tab"){
-        e.preventDefault();
-        document.getElementById("admin").classList.toggle("open");
-    }
-    if(e.key===" ") togglePause();
-    if(e.key.toLowerCase()==="g"){
-        godMode=!godMode;
-        document.getElementById("admin").classList.toggle("locked", !godMode);
-    }
-};
+function togglePause(){paused=!paused;}
+function stepOnce(){paused=true;update();draw();}
+function resetWorld(){balls=[];}
 
 /* ================= LOOP ================= */
-
 function update(){
-    balls.forEach(b=>b.update());
-    collide();
+if(toggleGravityFollow){gravity.x=(mouse.x-canvas.width/2)/100;gravity.y=(mouse.y-canvas.height/2)/100;}
+balls.forEach(b=>b.update());
+collide();
+if(wtfMode){balls.forEach(b=>b.vx+=Math.random()-0.5;b.vy+=Math.random()-0.5);}
 }
-
 function draw(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    balls.forEach(b=>b.draw());
+ctx.clearRect(0,0,canvas.width,canvas.height);
+balls.forEach(b=>b.draw());
 }
-
-function loop(){
-    if(!paused) update();
-    draw();
-
-    document.getElementById("stats").innerText =
-`Objets : ${balls.length}
-Gravité : ${Number(gravity.x).toFixed(2)}, ${Number(gravity.y).toFixed(2)}
-TimeScale : ${timeScale}
-GOD MODE : ${godMode ? "ON" : "OFF"}`;
-
-    requestAnimationFrame(loop);
-}
+document.onkeydown=e=>{
+if(e.key==="Tab"){e.preventDefault();document.getElementById("admin").classList.toggle("open");}
+if(e.key===" ") togglePause();
+if(e.key.toLowerCase()==="g"){godMode=!godMode;document.getElementById("admin").classList.toggle("locked",!godMode);}
+};
+function loop(){if(!paused) update();draw();
+document.getElementById("stats").innerText=
+`Objets: ${balls.length}
+Gravité: ${Number(gravity.x).toFixed(2)}, ${Number(gravity.y).toFixed(2)}
+TimeScale: ${timeScale}
+GOD MODE: ${godMode ? "ON" : "OFF"}
+ToggleGravityFollow: ${toggleGravityFollow}
+Chaos Permanent: ${wtfMode}`;
+requestAnimationFrame(loop);}
 loop();
 </script>
-
 </body>
 </html>
