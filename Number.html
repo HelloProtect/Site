@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Visualisation de Nombres Stylée</title>
+  <title>Visualisation de Nombres Stylée - Clicker</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <style>
     body {
       margin: 0;
       height: 100vh;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       background: radial-gradient(circle at 20% 20%, #0f0c29, #302b63, #24243e);
@@ -19,9 +20,10 @@
     }
 
     .counter {
-      font-size: 8rem;
+      font-size: 6rem;
       text-shadow: 0 0 10px #00ffe7, 0 0 20px #00ffe7, 0 0 30px #00ffe7, 0 0 40px #00ffe7;
       animation: glow 1.5s infinite alternate;
+      margin-bottom: 40px;
     }
 
     @keyframes glow {
@@ -34,10 +36,9 @@
     }
 
     .btn {
-      position: absolute;
-      bottom: 50px;
       padding: 15px 30px;
       font-size: 1.5rem;
+      margin: 10px;
       background: linear-gradient(45deg, #00ffe7, #ff00f7);
       border: none;
       border-radius: 10px;
@@ -51,6 +52,29 @@
       transform: scale(1.1);
       box-shadow: 0 0 20px #00ffe7, 0 0 40px #ff00f7;
     }
+
+    .shop {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 30px;
+    }
+
+    .upgrade {
+      background: #111;
+      border: 2px solid #00ffe7;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 250px;
+      text-align: center;
+      transition: 0.2s;
+    }
+
+    .upgrade:hover {
+      background: #222;
+    }
   </style>
 </head>
 <body>
@@ -58,31 +82,45 @@
   <div class="counter" id="counter">0</div>
   <button class="btn" onclick="increaseNumber()">+ Add</button>
 
+  <div class="shop">
+    <h2>Améliorations</h2>
+    <div class="upgrade" onclick="buyUpgrade(1)">Booster x2 (Coût : 100 $)</div>
+    <div class="upgrade" onclick="buyUpgrade(2)">Booster x5 (Coût : 500 $)</div>
+  </div>
+
   <script>
-    let count = 0;
+    // Chargement du nombre depuis localStorage
+    let count = parseInt(localStorage.getItem('count')) || 0;
+    let multiplier = parseInt(localStorage.getItem('multiplier')) || 1;
+
     const counter = document.getElementById('counter');
+    counter.innerText = count;
 
     function increaseNumber() {
-      count += Math.floor(Math.random() * 5000000000000 + 1); // ajoute un nombre aléatoire entre 1 et 50
-      animateCounter(count);
+      count += Math.floor(Math.random() * 10 + 1) * multiplier; // ajoute un nombre aléatoire x multiplicateur
+      updateCounter();
     }
 
-    function animateCounter(target) {
-      const duration = 800;
-      const start = +counter.innerText;
-      const range = target - start;
-      let startTime = null;
+    function updateCounter() {
+      counter.innerText = count;
+      localStorage.setItem('count', count);
+    }
 
-      function step(timestamp) {
-        if (!startTime) startTime = timestamp;
-        const progress = Math.min((timestamp - startTime) / duration, 1);
-        counter.innerText = Math.floor(start + range * progress);
-        if (progress < 1) {
-          requestAnimationFrame(step);
-        }
+    // Fonction d'achat d'améliorations
+    function buyUpgrade(upgradeId) {
+      if (upgradeId === 1 && count >= 100) {
+        count -= 100;
+        multiplier *= 2;
+      } else if (upgradeId === 2 && count >= 500) {
+        count -= 500;
+        multiplier *= 5;
+      } else {
+        alert("Pas assez de $ !");
+        return;
       }
-
-      requestAnimationFrame(step);
+      localStorage.setItem('multiplier', multiplier);
+      updateCounter();
+      alert("Amélioration achetée ! Multiplicateur actuel : x" + multiplier);
     }
   </script>
 
