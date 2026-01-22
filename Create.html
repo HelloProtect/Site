@@ -2,16 +2,40 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Chaos Physique</title>
+<title>Chaos Admin Panel</title>
 <style>
     body {
         margin: 0;
         overflow: hidden;
-        background: radial-gradient(circle at center, #050505, #000);
-        cursor: grab;
+        background: #050505;
+        font-family: monospace;
+        color: white;
     }
-    canvas {
-        display: block;
+    canvas { display: block; }
+
+    #panel {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        width: 220px;
+        background: rgba(0,0,0,0.85);
+        border: 1px solid #444;
+        padding: 10px;
+        display: none;
+    }
+
+    #panel h3 {
+        margin: 5px 0;
+        font-size: 14px;
+        border-bottom: 1px solid #333;
+    }
+
+    button, select, input {
+        width: 100%;
+        margin: 5px 0;
+        background: #111;
+        color: #ccc;
+        border: 1px solid #555;
     }
 </style>
 </head>
@@ -19,12 +43,33 @@
 
 <canvas id="c"></canvas>
 
+<div id="panel">
+    <h3>ADMIN PANEL</h3>
+
+    <button onclick="togglePause()">Pause / Play</button>
+    <button onclick="clearWorld()">Reset Monde</button>
+
+    <h3>Gravité</h3>
+    <input type="range" min="-2" max="2" step="0.1" value="0" oninput="gravity.x=this.value">
+    <input type="range" min="-2" max="2" step="0.1" value="0.6" oninput="gravity.y=this.value">
+
+    <h3>Création</h3>
+    <select onchange="mode=this.value">
+        <option value="normal">Normal</option>
+        <option value="spray">Spray</option>
+        <option value="giant">Géant</option>
+        <option value="chaos">Chaos</option>
+    </select>
+
+    <button onclick="wtfMode=!wtfMode">WTF Permanent</button>
+</div>
+
 <script>
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
-
 resize();
 window.addEventListener("resize", resize);
+
 function resize() {
     canvas.width = innerWidth;
     canvas.height = innerHeight;
@@ -32,17 +77,20 @@ function resize() {
 
 let gravity = { x: 0, y: 0.6 };
 let balls = [];
+let paused = false;
+let mode = "normal";
+let wtfMode = false;
+
 let mouse = { x: 0, y: 0, down: false };
 let grabbed = null;
 
 class Ball {
-    constructor(x, y) {
+    constructor(x, y, r = Math.random()*12+12) {
         this.x = x;
         this.y = y;
-        this.vx = (Math.random() - 0.5) * 8;
-        this.vy = (Math.random() - 0.5) * 8;
-        this.r = Math.random() * 12 + 12;
-        this.mass = this.r;
+        this.vx = (Math.random()-0.5)*10;
+        this.vy = (Math.random()-0.5)*10;
+        this.r = r;
         this.color = `hsl(${Math.random()*360},80%,60%)`;
     }
 
@@ -60,108 +108,92 @@ class Ball {
         this.x += this.vx;
         this.y += this.vy;
 
-        // murs
-        if (this.x - this.r < 0 || this.x + this.r > canvas.width)
-            this.vx *= -0.9;
-        if (this.y - this.r < 0 || this.y + this.r > canvas.height)
-            this.vy *= -0.9;
+        if (this.x-this.r < 0 || this.x+this.r > canvas.width) this.vx *= -0.9;
+        if (this.y-this.r < 0 || this.y+this.r > canvas.height) this.vy *= -0.9;
     }
 
     draw() {
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
         ctx.fillStyle = this.color;
         ctx.fill();
     }
 }
 
-// collisions entre balles
-function collisions() {
-    for (let i = 0; i < balls.length; i++) {
-        for (let j = i + 1; j < balls.length; j++) {
-            let a = balls[i];
-            let b = balls[j];
-
-            let dx = b.x - a.x;
-            let dy = b.y - a.y;
-            let dist = Math.hypot(dx, dy);
-            let min = a.r + b.r;
-
-            if (dist < min) {
-                let angle = Math.atan2(dy, dx);
-                let overlap = min - dist;
-
-                a.x -= Math.cos(angle) * overlap / 2;
-                a.y -= Math.sin(angle) * overlap / 2;
-                b.x += Math.cos(angle) * overlap / 2;
-                b.y += Math.sin(angle) * overlap / 2;
-
-                // échange de vitesse (simple)
-                let tx = a.vx;
-                let ty = a.vy;
-                a.vx = b.vx * 0.9;
-                a.vy = b.vy * 0.9;
-                b.vx = tx * 0.9;
-                b.vy = ty * 0.9;
+function collide() {
+    for (let i=0;i<balls.length;i++) {
+        for (let j=i+1;j<balls.length;j++) {
+            let a=balls[i], b=balls[j];
+            let dx=b.x-a.x, dy=b.y-a.y;
+            let d=Math.hypot(dx,dy);
+            if (d < a.r+b.r) {
+                let nx=dx/d, ny=dy/d;
+                let p=0.5;
+                a.vx-=nx*p; a.vy-=ny*p;
+                b.vx+=nx*p; b.vy+=ny*p;
             }
         }
     }
 }
 
-// WTF EVENTS
-function chaosEvent() {
-    const r = Math.random();
-
-    if (r < 0.33) {
-        gravity.x = (Math.random() - 0.5) * 1.5;
-        gravity.y = (Math.random() - 0.5) * 1.5;
-    } else if (r < 0.66) {
-        balls.forEach(b => {
-            b.vx += (Math.random() - 0.5) * 20;
-            b.vy += (Math.random() - 0.5) * 20;
-        });
-    } else {
-        balls.forEach(b => b.r *= 0.8 + Math.random());
+function create(x,y) {
+    if (mode==="normal") balls.push(new Ball(x,y));
+    if (mode==="spray") for(let i=0;i<5;i++) balls.push(new Ball(x,y));
+    if (mode==="giant") balls.push(new Ball(x,y,50));
+    if (mode==="chaos") {
+        let b=new Ball(x,y);
+        b.vx*=3; b.vy*=3;
+        balls.push(b);
     }
-
-    setTimeout(chaosEvent, Math.random() * 3000 + 3000);
 }
-chaosEvent();
 
-// souris
 canvas.addEventListener("mousedown", e => {
-    mouse.down = true;
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
+    mouse.down=true;
+    mouse.x=e.clientX; mouse.y=e.clientY;
 
-    for (let i = balls.length - 1; i >= 0; i--) {
-        let b = balls[i];
-        if (Math.hypot(mouse.x - b.x, mouse.y - b.y) < b.r) {
-            grabbed = b;
-            return;
+    for(let i=balls.length-1;i>=0;i--){
+        let b=balls[i];
+        if(Math.hypot(mouse.x-b.x,mouse.y-b.y)<b.r){
+            grabbed=b; return;
         }
     }
-
-    balls.push(new Ball(mouse.x, mouse.y));
+    create(mouse.x,mouse.y);
 });
 
-canvas.addEventListener("mousemove", e => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
+canvas.addEventListener("mousemove", e=>{
+    mouse.x=e.clientX; mouse.y=e.clientY;
 });
 
-canvas.addEventListener("mouseup", () => {
-    mouse.down = false;
-    grabbed = null;
+canvas.addEventListener("mouseup", ()=>{
+    mouse.down=false;
+    grabbed=null;
 });
 
-function loop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function togglePause(){ paused=!paused; }
+function clearWorld(){ balls=[]; }
 
-    balls.forEach(b => b.update());
-    collisions();
-    balls.forEach(b => b.draw());
+setInterval(()=>{
+    if(wtfMode){
+        gravity.x=(Math.random()-0.5)*2;
+        gravity.y=(Math.random()-0.5)*2;
+    }
+},2000);
 
+document.addEventListener("keydown", e=>{
+    if(e.key===" ") togglePause();
+    if(e.key.toLowerCase()==="a"){
+        const p=document.getElementById("panel");
+        p.style.display = p.style.display==="none"?"block":"none";
+    }
+});
+
+function loop(){
+    if(!paused){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        balls.forEach(b=>b.update());
+        collide();
+        balls.forEach(b=>b.draw());
+    }
     requestAnimationFrame(loop);
 }
 loop();
