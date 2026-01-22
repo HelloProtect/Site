@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Gravité Interactive</title>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: #0c0c0c;
+        cursor: grab;
+    }
+    canvas {
+        display: block;
+    }
+</style>
+</head>
+<body>
+
+<canvas id="world"></canvas>
+
+<script>
+const canvas = document.getElementById("world");
+const ctx = canvas.getContext("2d");
+
+resize();
+window.addEventListener("resize", resize);
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+const gravity = 0.6;
+const friction = 0.995;
+const bounce = 0.7;
+const objects = [];
+
+let mouse = { x: 0, y: 0, down: false };
+let grabbed = null;
+
+class Box {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 4;
+        this.vy = 0;
+        this.size = Math.random() * 20 + 20;
+    }
+
+    update() {
+        if (grabbed === this && mouse.down) {
+            this.x = mouse.x;
+            this.y = mouse.y;
+            this.vx = 0;
+            this.vy = 0;
+            return;
+        }
+
+        this.vy += gravity;
+        this.x += this.vx;
+        this.y += this.vy;
+
+        this.vx *= friction;
+
+        if (this.y + this.size > canvas.height) {
+            this.y = canvas.height - this.size;
+            this.vy *= -bounce;
+        }
+
+        if (this.x < 0 || this.x + this.size > canvas.width) {
+            this.vx *= -0.8;
+        }
+    }
+
+    draw() {
+        ctx.fillStyle = "#9aa7ff";
+        ctx.fillRect(this.x, this.y, this.size, this.size);
+    }
+
+    contains(mx, my) {
+        return mx > this.x && mx < this.x + this.size &&
+               my > this.y && my < this.y + this.size;
+    }
+}
+
+canvas.addEventListener("mousedown", e => {
+    mouse.down = true;
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+
+    for (let i = objects.length - 1; i >= 0; i--) {
+        if (objects[i].contains(mouse.x, mouse.y)) {
+            grabbed = objects[i];
+            return;
+        }
+    }
+
+    objects.push(new Box(mouse.x, mouse.y));
+});
+
+canvas.addEventListener("mousemove", e => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+});
+
+canvas.addEventListener("mouseup", () => {
+    mouse.down = false;
+    grabbed = null;
+});
+
+function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    objects.forEach(o => {
+        o.update();
+        o.draw();
+    });
+
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
