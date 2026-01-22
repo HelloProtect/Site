@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visualisation de Nombres Stylée</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at 20% 20%, #0f0c29, #302b63, #24243e);
+      font-family: 'Orbitron', sans-serif;
+      color: #00ffe7;
+      overflow: hidden;
+    }
+
+    .counter {
+      font-size: 8rem;
+      text-shadow: 0 0 10px #00ffe7, 0 0 20px #00ffe7, 0 0 30px #00ffe7, 0 0 40px #00ffe7;
+      animation: glow 1.5s infinite alternate;
+    }
+
+    @keyframes glow {
+      from {
+        text-shadow: 0 0 5px #00ffe7, 0 0 10px #00ffe7, 0 0 20px #00ffe7;
+      }
+      to {
+        text-shadow: 0 0 20px #00ffe7, 0 0 40px #00ffe7, 0 0 60px #00ffe7;
+      }
+    }
+
+    .btn {
+      position: absolute;
+      bottom: 50px;
+      padding: 15px 30px;
+      font-size: 1.5rem;
+      background: linear-gradient(45deg, #00ffe7, #ff00f7);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      cursor: pointer;
+      transition: 0.3s;
+      box-shadow: 0 0 10px #00ffe7, 0 0 20px #ff00f7;
+    }
+
+    .btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 20px #00ffe7, 0 0 40px #ff00f7;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="counter" id="counter">0</div>
+  <button class="btn" onclick="increaseNumber()">+ Add</button>
+
+  <script>
+    let count = 0;
+    const counter = document.getElementById('counter');
+
+    function increaseNumber() {
+      count += Math.floor(Math.random() * 50 + 1); // ajoute un nombre aléatoire entre 1 et 50
+      animateCounter(count);
+    }
+
+    function animateCounter(target) {
+      const duration = 800;
+      const start = +counter.innerText;
+      const range = target - start;
+      let startTime = null;
+
+      function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+        counter.innerText = Math.floor(start + range * progress);
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        }
+      }
+
+      requestAnimationFrame(step);
+    }
+  </script>
+
+</body>
+</html>
