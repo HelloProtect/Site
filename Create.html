@@ -2,155 +2,155 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Chaos Admin Panel</title>
+<title>Chaos Engine — Admin</title>
 <style>
-    body {
-        margin: 0;
-        overflow: hidden;
-        background: #050505;
-        font-family: monospace;
-        color: white;
-    }
-    canvas { display: block; }
+body {
+    margin:0;
+    overflow:hidden;
+    background:#050505;
+    font-family:monospace;
+    color:#eee;
+}
+canvas { display:block; }
 
-    #panel {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        width: 220px;
-        background: rgba(0,0,0,0.85);
-        border: 1px solid #444;
-        padding: 10px;
-        display: none;
-    }
+#admin {
+    position:fixed;
+    right:0;
+    top:0;
+    width:300px;
+    height:100%;
+    background:rgba(10,10,10,0.95);
+    border-left:1px solid #333;
+    padding:10px;
+    transform:translateX(100%);
+    transition:0.3s;
+}
+#admin.open { transform:translateX(0); }
 
-    #panel h3 {
-        margin: 5px 0;
-        font-size: 14px;
-        border-bottom: 1px solid #333;
-    }
+h3 { margin:8px 0; border-bottom:1px solid #333; }
 
-    button, select, input {
-        width: 100%;
-        margin: 5px 0;
-        background: #111;
-        color: #ccc;
-        border: 1px solid #555;
-    }
+button, select, input {
+    width:100%;
+    margin:4px 0;
+    background:#111;
+    color:#ccc;
+    border:1px solid #444;
+}
+.stat {
+    font-size:12px;
+    opacity:0.8;
+}
 </style>
 </head>
 <body>
 
 <canvas id="c"></canvas>
 
-<div id="panel">
+<div id="admin">
     <h3>ADMIN PANEL</h3>
 
-    <button onclick="togglePause()">Pause / Play</button>
-    <button onclick="clearWorld()">Reset Monde</button>
+    <button onclick="paused=!paused">⏸ Pause</button>
+    <button onclick="stepOnce()">⏭ Step</button>
+
+    <h3>Temps</h3>
+    <input type="range" min="0.1" max="2" step="0.1" value="1"
+        oninput="timeScale=this.value">
 
     <h3>Gravité</h3>
-    <input type="range" min="-2" max="2" step="0.1" value="0" oninput="gravity.x=this.value">
-    <input type="range" min="-2" max="2" step="0.1" value="0.6" oninput="gravity.y=this.value">
+    <input type="range" min="-2" max="2" step="0.1" value="0"
+        oninput="gravity.x=this.value">
+    <input type="range" min="-2" max="2" step="0.1" value="0.6"
+        oninput="gravity.y=this.value">
 
     <h3>Création</h3>
-    <select onchange="mode=this.value">
+    <select onchange="createMode=this.value">
         <option value="normal">Normal</option>
         <option value="spray">Spray</option>
-        <option value="giant">Géant</option>
-        <option value="chaos">Chaos</option>
+        <option value="line">Ligne</option>
+        <option value="circle">Cercle</option>
     </select>
 
-    <button onclick="wtfMode=!wtfMode">WTF Permanent</button>
+    <h3>WTF</h3>
+    <button onclick="implode()">Implosion</button>
+    <button onclick="explode()">Explosion</button>
+    <button onclick="mutate()">Mutation</button>
+
+    <h3>Stats</h3>
+    <div class="stat" id="stats"></div>
 </div>
 
 <script>
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 resize();
-window.addEventListener("resize", resize);
-
-function resize() {
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
+window.onresize=resize;
+function resize(){
+    canvas.width=innerWidth;
+    canvas.height=innerHeight;
 }
 
-let gravity = { x: 0, y: 0.6 };
-let balls = [];
-let paused = false;
-let mode = "normal";
-let wtfMode = false;
+let balls=[];
+let gravity={x:0,y:0.6};
+let paused=false;
+let timeScale=1;
+let createMode="normal";
+let mouse={x:0,y:0,down:false};
+let grabbed=null;
 
-let mouse = { x: 0, y: 0, down: false };
-let grabbed = null;
-
-class Ball {
-    constructor(x, y, r = Math.random()*12+12) {
-        this.x = x;
-        this.y = y;
-        this.vx = (Math.random()-0.5)*10;
-        this.vy = (Math.random()-0.5)*10;
-        this.r = r;
-        this.color = `hsl(${Math.random()*360},80%,60%)`;
+class Ball{
+    constructor(x,y,r=15){
+        this.x=x; this.y=y;
+        this.vx=(Math.random()-0.5)*8;
+        this.vy=(Math.random()-0.5)*8;
+        this.r=r;
+        this.c=`hsl(${Math.random()*360},80%,60%)`;
     }
-
-    update() {
-        if (grabbed === this && mouse.down) {
-            this.x = mouse.x;
-            this.y = mouse.y;
-            this.vx = this.vy = 0;
-            return;
+    update(){
+        if(grabbed===this&&mouse.down){
+            this.x=mouse.x; this.y=mouse.y;
+            this.vx=this.vy=0; return;
         }
-
-        this.vx += gravity.x;
-        this.vy += gravity.y;
-
-        this.x += this.vx;
-        this.y += this.vy;
-
-        if (this.x-this.r < 0 || this.x+this.r > canvas.width) this.vx *= -0.9;
-        if (this.y-this.r < 0 || this.y+this.r > canvas.height) this.vy *= -0.9;
+        this.vx+=gravity.x*timeScale;
+        this.vy+=gravity.y*timeScale;
+        this.x+=this.vx*timeScale;
+        this.y+=this.vy*timeScale;
+        if(this.x<this.r||this.x>canvas.width-this.r)this.vx*=-0.9;
+        if(this.y<this.r||this.y>canvas.height-this.r)this.vy*=-0.9;
     }
-
-    draw() {
+    draw(){
         ctx.beginPath();
         ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
-        ctx.fillStyle = this.color;
+        ctx.fillStyle=this.c;
         ctx.fill();
     }
 }
 
-function collide() {
-    for (let i=0;i<balls.length;i++) {
-        for (let j=i+1;j<balls.length;j++) {
-            let a=balls[i], b=balls[j];
-            let dx=b.x-a.x, dy=b.y-a.y;
+function collide(){
+    for(let i=0;i<balls.length;i++){
+        for(let j=i+1;j<balls.length;j++){
+            let a=balls[i],b=balls[j];
+            let dx=b.x-a.x,dy=b.y-a.y;
             let d=Math.hypot(dx,dy);
-            if (d < a.r+b.r) {
-                let nx=dx/d, ny=dy/d;
-                let p=0.5;
-                a.vx-=nx*p; a.vy-=ny*p;
-                b.vx+=nx*p; b.vy+=ny*p;
+            if(d<a.r+b.r){
+                let nx=dx/d,ny=dy/d;
+                a.vx-=nx; a.vy-=ny;
+                b.vx+=nx; b.vy+=ny;
             }
         }
     }
 }
 
-function create(x,y) {
-    if (mode==="normal") balls.push(new Ball(x,y));
-    if (mode==="spray") for(let i=0;i<5;i++) balls.push(new Ball(x,y));
-    if (mode==="giant") balls.push(new Ball(x,y,50));
-    if (mode==="chaos") {
-        let b=new Ball(x,y);
-        b.vx*=3; b.vy*=3;
-        balls.push(b);
-    }
+function create(x,y){
+    if(createMode==="normal") balls.push(new Ball(x,y));
+    if(createMode==="spray") for(let i=0;i<6;i++) balls.push(new Ball(x,y));
+    if(createMode==="line") for(let i=0;i<5;i++) balls.push(new Ball(x+i*20,y));
+    if(createMode==="circle")
+        for(let a=0;a<Math.PI*2;a+=0.5)
+            balls.push(new Ball(x+Math.cos(a)*40,y+Math.sin(a)*40));
 }
 
-canvas.addEventListener("mousedown", e => {
-    mouse.down=true;
-    mouse.x=e.clientX; mouse.y=e.clientY;
-
+canvas.onmousedown=e=>{
+    mouse.down=true; mouse.x=e.clientX; mouse.y=e.clientY;
     for(let i=balls.length-1;i>=0;i--){
         let b=balls[i];
         if(Math.hypot(mouse.x-b.x,mouse.y-b.y)<b.r){
@@ -158,42 +158,54 @@ canvas.addEventListener("mousedown", e => {
         }
     }
     create(mouse.x,mouse.y);
-});
+};
+canvas.onmousemove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};
+canvas.onmouseup=()=>{mouse.down=false;grabbed=null};
 
-canvas.addEventListener("mousemove", e=>{
-    mouse.x=e.clientX; mouse.y=e.clientY;
-});
+function explode(){
+    balls.forEach(b=>{
+        b.vx+=(b.x-canvas.width/2)/10;
+        b.vy+=(b.y-canvas.height/2)/10;
+    });
+}
+function implode(){
+    balls.forEach(b=>{
+        b.vx-=(b.x-canvas.width/2)/10;
+        b.vy-=(b.y-canvas.height/2)/10;
+    });
+}
+function mutate(){
+    balls.forEach(b=>b.r*=0.7+Math.random());
+}
 
-canvas.addEventListener("mouseup", ()=>{
-    mouse.down=false;
-    grabbed=null;
-});
+function stepOnce(){
+    paused=true;
+    update();
+    draw();
+}
 
-function togglePause(){ paused=!paused; }
-function clearWorld(){ balls=[]; }
+function update(){
+    balls.forEach(b=>b.update());
+    collide();
+}
+function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    balls.forEach(b=>b.draw());
+}
 
-setInterval(()=>{
-    if(wtfMode){
-        gravity.x=(Math.random()-0.5)*2;
-        gravity.y=(Math.random()-0.5)*2;
+document.onkeydown=e=>{
+    if(e.key==="Tab"){
+        e.preventDefault();
+        document.getElementById("admin").classList.toggle("open");
     }
-},2000);
-
-document.addEventListener("keydown", e=>{
-    if(e.key===" ") togglePause();
-    if(e.key.toLowerCase()==="a"){
-        const p=document.getElementById("panel");
-        p.style.display = p.style.display==="none"?"block":"none";
-    }
-});
+    if(e.key===" ") paused=!paused;
+};
 
 function loop(){
-    if(!paused){
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        balls.forEach(b=>b.update());
-        collide();
-        balls.forEach(b=>b.draw());
-    }
+    if(!paused) update();
+    draw();
+    document.getElementById("stats").innerText =
+        `Objets: ${balls.length}\nGravité: ${gravity.x.toFixed(2)}, ${gravity.y.toFixed(2)}`;
     requestAnimationFrame(loop);
 }
 loop();
