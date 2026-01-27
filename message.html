@@ -3,78 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Message Sécurisé</title>
+    <title>Ghost-Msg | Sécurisé</title>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #0a0a0c; color: #e2e8f0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #111114; padding: 2.5rem; border-radius: 20px; border: 1px solid #27272a; text-align: center; width: 100%; max-width: 400px; }
-        input { width: 100%; padding: 12px; margin: 8px 0; background: #1c1c21; border: 1px solid #3f3f46; border-radius: 8px; color: white; box-sizing: border-box; }
-        button { width: 100%; background: #ffffff; color: #000; border: none; padding: 12px; margin-top: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .link-box { margin-top: 15px; font-size: 0.75rem; color: #3b82f6; word-wrap: break-word; cursor: pointer; }
-        .expired { color: #ef4444; }
+        :root { --bg: #050505; --card: #121214; --accent: #0070f3; --text: #eaeaea; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: var(--card); padding: 2rem; border-radius: 16px; border: 1px solid #333; width: 100%; max-width: 420px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        h1 { font-size: 1.5rem; margin-bottom: 1.5rem; letter-spacing: -1px; }
+        input, select { width: 100%; padding: 12px; margin: 6px 0; background: #1a1a1e; border: 1px solid #333; border-radius: 8px; color: #fff; box-sizing: border-box; outline: none; transition: 0.2s; }
+        input:focus { border-color: var(--accent); }
+        button { width: 100%; background: var(--accent); color: white; border: none; padding: 14px; margin-top: 15px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .link-area { margin-top: 20px; padding: 10px; background: #000; border-radius: 8px; border: 1px dashed #444; font-size: 0.8rem; word-break: break-all; cursor: pointer; position: relative; }
+        .badge { font-size: 0.7rem; background: #333; padding: 2px 8px; border-radius: 10px; color: #888; margin-bottom: 10px; display: inline-block; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <div id="view" style="display: none;">
-        <h2 id="msg-display">Message Verrouillé</h2>
-        <input type="password" id="pass-verify" placeholder="Mot de passe">
-        <button onclick="unlock()">Déverrouiller</button>
-        <p id="error" style="color:#ef4444; font-size: 0.8rem;"></p>
-        <a href="?" style="color: #64748b; font-size: 0.8rem; text-decoration: none;">← Accueil</a>
+        <div class="badge" id="expiry-status">Lien crypté</div>
+        <h2 id="title-view">Accès Protégé</h2>
+        <div id="unlock-form">
+            <input type="password" id="pass-verify" placeholder="Code d'accès">
+            <button onclick="unlock()">Décrypter</button>
+        </div>
+        <div id="msg-content" style="display:none; font-size: 1.2rem; margin: 20px 0; padding: 15px; background: #1a1a1e; border-radius: 8px;"></div>
+        <a href="?" style="color: #666; font-size: 0.8rem; text-decoration: none; display: block; margin-top: 20px;">← Créer un autre message</a>
     </div>
 
     <div id="create">
-        <h2>Créer un message</h2>
-        <input type="text" id="msg" placeholder="Votre message secret">
-        <input type="password" id="pass" placeholder="Mot de passe">
-        <select id="duration" style="width:100%; padding:10px; border-radius:8px; background:#1c1c21; color:white; border:1px solid #3f3f46;">
-            <option value="1">Expire dans 1 minute</option>
-            <option value="60">Expire dans 1 heure</option>
-            <option value="1440">Expire dans 1 jour</option>
+        <h1>Ghost-Msg</h1>
+        <input type="text" id="msg" placeholder="Message secret...">
+        <input type="password" id="pass" placeholder="Mot de passe (optionnel)">
+        <select id="duration">
+            <option value="5">5 minutes</option>
+            <option value="60">1 heure</option>
+            <option value="1440">24 heures</option>
         </select>
-        <button onclick="generate()">Générer le lien sécurisé</button>
-        <div id="result" class="link-box"></div>
+        <button onclick="generate()">Générer le lien</button>
+        <div id="result" class="link-area" onclick="copy()" title="Cliquer pour copier"></div>
     </div>
 </div>
 
 <script>
     const hash = window.location.hash.substring(1);
+    
     if (hash) {
         document.getElementById('create').style.display = 'none';
         document.getElementById('view').style.display = 'block';
+        checkExpiry();
+    }
+
+    function checkExpiry() {
+        const data = JSON.parse(atob(hash));
+        if (Date.now() > data.e) {
+            document.getElementById('unlock-form').innerHTML = "<p style='color:red'>Lien expiré.</p>";
+            document.getElementById('expiry-status').innerText = "Expiré";
+        }
     }
 
     function generate() {
         const msg = document.getElementById('msg').value;
         const pass = document.getElementById('pass').value;
-        const dur = document.getElementById('duration').value;
-        
-        if (!msg || !pass) return alert("Remplissez tout !");
+        if (!msg) return;
 
-        const expiry = Date.now() + (dur * 60000);
-        const data = JSON.stringify({ m: msg, p: pass, e: expiry });
-        const url = window.location.origin + window.location.pathname + "#" + btoa(unescape(encodeURIComponent(data)));
+        const data = { m: msg, p: pass, e: Date.now() + (document.getElementById('duration').value * 60000) };
+        const url = window.location.origin + window.location.pathname + "#" + btoa(JSON.stringify(data));
         
         document.getElementById('result').innerText = url;
     }
 
     function unlock() {
-        try {
-            const data = JSON.parse(decodeURIComponent(escape(atob(hash))));
-            const inputPass = document.getElementById('pass-verify').value;
+        const data = JSON.parse(atob(hash));
+        const inputPass = document.getElementById('pass-verify').value;
 
-            if (Date.now() > data.e) {
-                document.getElementById('error').innerText = "Ce lien a expiré.";
-                return;
-            }
-            if (inputPass === data.p) {
-                document.getElementById('view').innerHTML = `<h1>${data.m}</h1><a href="?" style="color: #64748b; text-decoration: none;">← Retour</a>`;
-            } else {
-                document.getElementById('error').innerText = "Mot de passe incorrect.";
-            }
-        } catch(e) { alert("Lien corrompu"); }
+        if (inputPass === data.p) {
+            document.getElementById('unlock-form').style.display = 'none';
+            document.getElementById('title-view').innerText = "Message :";
+            const mc = document.getElementById('msg-content');
+            mc.innerText = data.m;
+            mc.style.display = 'block';
+        } else {
+            alert("Mauvais code !");
+        }
+    }
+
+    function copy() {
+        const text = document.getElementById('result').innerText;
+        navigator.clipboard.writeText(text);
+        alert("Lien copié !");
     }
 </script>
+
 </body>
 </html>
