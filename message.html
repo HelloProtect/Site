@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Message Share</title>
+</head>
+<body>
+    <div id="app">
+        <div id="view"></div>
+        <hr>
+        <input type="text" id="input" placeholder="Votre message...">
+        <button onclick="generer()">Créer le lien</button>
+        <p id="link"></p>
+    </div>
+
+    <script>
+        const view = document.getElementById('view');
+        const hash = window.location.hash.substring(1);
+
+        // Affichage du message si présent dans l'URL
+        if (hash) {
+            view.innerText = "Message reçu : " + atob(hash);
+        }
+
+        function generer() {
+            const msg = document.getElementById('input').value;
+            const encoded = btoa(msg); // Encode en Base64
+            const url = window.location.origin + window.location.pathname + "#" + encoded;
+            
+            document.getElementById('link').innerHTML = `Lien : <a href="${url}">${url}</a>`;
+        }
+    </script>
+</body>
+</html>
