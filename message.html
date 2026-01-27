@@ -3,96 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ghost-Msg | Sécurisé</title>
+    <title>Ghost-Share</title>
     <style>
-        :root { --bg: #050505; --card: #121214; --accent: #0070f3; --text: #eaeaea; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: var(--card); padding: 2rem; border-radius: 16px; border: 1px solid #333; width: 100%; max-width: 420px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        h1 { font-size: 1.5rem; margin-bottom: 1.5rem; letter-spacing: -1px; }
-        input, select { width: 100%; padding: 12px; margin: 6px 0; background: #1a1a1e; border: 1px solid #333; border-radius: 8px; color: #fff; box-sizing: border-box; outline: none; transition: 0.2s; }
-        input:focus { border-color: var(--accent); }
-        button { width: 100%; background: var(--accent); color: white; border: none; padding: 14px; margin-top: 15px; border-radius: 8px; font-weight: 600; cursor: pointer; }
-        .link-area { margin-top: 20px; padding: 10px; background: #000; border-radius: 8px; border: 1px dashed #444; font-size: 0.8rem; word-break: break-all; cursor: pointer; position: relative; }
-        .badge { font-size: 0.7rem; background: #333; padding: 2px 8px; border-radius: 10px; color: #888; margin-bottom: 10px; display: inline-block; }
+        :root { --accent: #0070f3; --bg: #050505; }
+        body { font-family: sans-serif; background: var(--bg); color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #111; padding: 2rem; border-radius: 12px; border: 1px solid #333; width: 90%; max-width: 450px; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; box-sizing: border-box; }
+        button { background: var(--accent); color: white; font-weight: bold; cursor: pointer; border: none; }
+        .hidden { display: none; }
+        #result { font-size: 0.7rem; color: var(--accent); word-break: break-all; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <div id="view" style="display: none;">
-        <div class="badge" id="expiry-status">Lien crypté</div>
-        <h2 id="title-view">Accès Protégé</h2>
-        <div id="unlock-form">
-            <input type="password" id="pass-verify" placeholder="Code d'accès">
-            <button onclick="unlock()">Décrypter</button>
-        </div>
-        <div id="msg-content" style="display:none; font-size: 1.2rem; margin: 20px 0; padding: 15px; background: #1a1a1e; border-radius: 8px;"></div>
-        <a href="?" style="color: #666; font-size: 0.8rem; text-decoration: none; display: block; margin-top: 20px;">← Créer un autre message</a>
+    <div id="view" class="hidden">
+        <h2 id="status">Action requise</h2>
+        <input type="password" id="pass-verify" placeholder="Mot de passe">
+        <button onclick="unlock()">Valider</button>
     </div>
 
     <div id="create">
-        <h1>Ghost-Msg</h1>
-        <input type="text" id="msg" placeholder="Message secret...">
-        <input type="password" id="pass" placeholder="Mot de passe (optionnel)">
-        <select id="duration">
-            <option value="5">5 minutes</option>
-            <option value="60">1 heure</option>
-            <option value="1440">24 heures</option>
+        <h1>Ghost-Share</h1>
+        <select id="type" onchange="toggleInputs()">
+            <option value="msg">Message Secret</option>
+            <option value="url">Redirection URL</option>
+            <option value="file">Petit Fichier (< 1Mo)</option>
         </select>
-        <button onclick="generate()">Générer le lien</button>
-        <div id="result" class="link-area" onclick="copy()" title="Cliquer pour copier"></div>
+        
+        <input type="text" id="content" placeholder="Votre message ou URL...">
+        <input type="file" id="file-input" class="hidden">
+        <input type="password" id="pass" placeholder="Mot de passe">
+        
+        <button onclick="generate()">Créer le lien</button>
+        <div id="result" onclick="copy()"></div>
     </div>
 </div>
 
 <script>
     const hash = window.location.hash.substring(1);
-    
     if (hash) {
-        document.getElementById('create').style.display = 'none';
-        document.getElementById('view').style.display = 'block';
-        checkExpiry();
+        document.getElementById('create').classList.add('hidden');
+        document.getElementById('view').classList.remove('hidden');
     }
 
-    function checkExpiry() {
-        const data = JSON.parse(atob(hash));
-        if (Date.now() > data.e) {
-            document.getElementById('unlock-form').innerHTML = "<p style='color:red'>Lien expiré.</p>";
-            document.getElementById('expiry-status').innerText = "Expiré";
-        }
+    function toggleInputs() {
+        const type = document.getElementById('type').value;
+        document.getElementById('content').className = (type === 'file') ? 'hidden' : '';
+        document.getElementById('file-input').className = (type === 'file') ? '' : 'hidden';
     }
 
-    function generate() {
-        const msg = document.getElementById('msg').value;
+    async function generate() {
+        const type = document.getElementById('type').value;
         const pass = document.getElementById('pass').value;
-        if (!msg) return;
+        let payload = "";
 
-        const data = { m: msg, p: pass, e: Date.now() + (document.getElementById('duration').value * 60000) };
-        const url = window.location.origin + window.location.pathname + "#" + btoa(JSON.stringify(data));
-        
-        document.getElementById('result').innerText = url;
+        if (type === 'file') {
+            const file = document.getElementById('file-input').files[0];
+            if (!file) return;
+            payload = await toBase64(file);
+        } else {
+            payload = document.getElementById('content').value;
+        }
+
+        const data = { t: type, p: payload, pass: pass, e: Date.now() + 3600000 }; // Expire 1h
+        document.getElementById('result').innerText = window.location.origin + window.location.pathname + "#" + btoa(JSON.stringify(data));
     }
 
     function unlock() {
         const data = JSON.parse(atob(hash));
-        const inputPass = document.getElementById('pass-verify').value;
+        if (document.getElementById('pass-verify').value !== data.pass) return alert("Faux !");
+        if (Date.now() > data.e) return alert("Expiré !");
 
-        if (inputPass === data.p) {
-            document.getElementById('unlock-form').style.display = 'none';
-            document.getElementById('title-view').innerText = "Message :";
-            const mc = document.getElementById('msg-content');
-            mc.innerText = data.m;
-            mc.style.display = 'block';
-        } else {
-            alert("Mauvais code !");
+        if (data.t === 'url') window.location.href = data.p;
+        else if (data.t === 'msg') document.body.innerHTML = `<h1>${data.p}</h1>`;
+        else if (data.t === 'file') {
+            const a = document.createElement("a");
+            a.href = data.p;
+            a.download = "fichier_ghost";
+            a.click();
         }
     }
 
+    const toBase64 = file => new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => res(reader.result);
+    });
+
     function copy() {
-        const text = document.getElementById('result').innerText;
-        navigator.clipboard.writeText(text);
-        alert("Lien copié !");
+        navigator.clipboard.writeText(document.getElementById('result').innerText);
+        alert("Copié !");
     }
 </script>
-
 </body>
 </html>
