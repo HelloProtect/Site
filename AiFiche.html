@@ -2,81 +2,112 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ghost-Vault</title>
     <style>
-        :root { --accent: #0070f3; --bg: #050505; --card: #111; }
-        body { font-family: sans-serif; background: var(--bg); color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: var(--card); padding: 2rem; border-radius: 12px; border: 1px solid #333; width: 90%; max-width: 400px; text-align: center; }
-        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; box-sizing: border-box; background: #000; color: white; }
-        button { background: var(--accent); border: none; font-weight: bold; cursor: pointer; }
-        .res { font-size: 0.75rem; color: var(--accent); word-break: break-all; margin-top: 15px; cursor: pointer; }
+        :root { --accent: #0070f3; --bg: #050505; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #111; padding: 2rem; border-radius: 12px; border: 1px solid #333; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #000; color: white; font-size: 14px; }
+        button { background: var(--accent); border: none; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+        button:hover { opacity: 0.8; }
+        #out { font-size: 11px; color: var(--accent); word-break: break-all; margin-top: 15px; cursor: pointer; border: 1px dashed #333; padding: 10px; background: rgba(0,112,243,0.05); }
         .hidden { display: none; }
+        h1 { font-size: 1.5rem; margin-bottom: 1rem; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <div id="view" class="hidden">
-        <h2>Accès Sécurisé</h2>
+        <h1>Coffre Scellé</h1>
+        <p style="color:#888; font-size: 0.9rem;">Entrez le code pour déchiffrer</p>
         <input type="password" id="pv" placeholder="Mot de passe">
-        <button onclick="unlock()">Déverrouiller</button>
+        <button onclick="unlock()">DÉVERROUILLER</button>
     </div>
 
     <div id="create">
         <h1>Ghost-Vault</h1>
-        <select id="t" onchange="document.getElementById('m').type = (this.value==='f') ? 'file' : 'text'">
-            <option value="m">Message</option>
+        <select id="t" onchange="toggle()">
+            <option value="m">Message Texte</option>
             <option value="u">Redirection URL</option>
-            <option value="f">Fichier (<1Mo)</option>
+            <option value="f">Fichier (< 1Mo)</option>
         </select>
-        <input type="text" id="m" placeholder="Contenu ou URL">
-        <input type="password" id="p" placeholder="Mot de passe">
-        <button onclick="gen()">Générer le lien</button>
-        <div id="out" class="res" onclick="copy()"></div>
+        <input type="text" id="m" placeholder="Votre message ou URL...">
+        <input type="file" id="fi" class="hidden">
+        <input type="password" id="p" placeholder="Mot de passe (optionnel)">
+        <button onclick="gen()">GÉNÉRER LE LIEN</button>
+        <div id="out" onclick="copy()">Le lien apparaîtra ici...</div>
     </div>
 </div>
 
 <script>
     const h = window.location.hash.substring(1);
+
+    // Bascule entre création et lecture
     if(h) {
         document.getElementById('create').classList.add('hidden');
         document.getElementById('view').classList.remove('hidden');
     }
 
+    // Gère l'affichage selon le type choisi
+    function toggle() {
+        const isFile = document.getElementById('t').value === 'f';
+        document.getElementById('m').classList.toggle('hidden', isFile);
+        document.getElementById('fi').classList.toggle('hidden', !isFile);
+    }
+
+    // Génération du lien
     async function gen() {
         const type = document.getElementById('t').value;
-        const pass = document.getElementById('p').value;
         let content = "";
 
         if(type === 'f') {
-            const file = document.getElementById('m').files[0];
-            if(!file) return;
+            const file = document.getElementById('fi').files[0];
+            if(!file) return alert("Sélectionnez un fichier");
             content = await new Promise(r => { const rd = new FileReader(); rd.onload=()=>r(rd.result); rd.readAsDataURL(file); });
         } else {
             content = document.getElementById('m').value;
         }
 
-        const data = btoa(encodeURIComponent(JSON.stringify({t:type, c:content, p:pass})));
-        document.getElementById('out').innerText = window.location.origin + window.location.pathname + "#" + data;
+        // Encodage UTF-8 Safe
+        const data = btoa(unescape(encodeURIComponent(JSON.stringify({
+            t: type, 
+            c: content, 
+            p: document.getElementById('p').value
+        }))));
+
+        const finalURL = window.location.origin + window.location.pathname + "#" + data;
+        document.getElementById('out').innerText = finalURL;
     }
 
+    // Décodage et action
     function unlock() {
         try {
-            const d = JSON.parse(decodeURIComponent(atob(h)));
-            if(document.getElementById('pv').value !== d.p) return alert("Code erroné");
+            const d = JSON.parse(decodeURIComponent(escape(atob(h))));
+            if(document.getElementById('pv').value !== d.p) return alert("Code incorrect");
 
-            if(d.t === 'u') window.location.href = d.c;
-            else if(d.t === 'f') {
+            if(d.t === 'u') {
+                window.location.href = d.c;
+            } else if(d.t === 'f') {
                 const a = document.createElement('a'); a.href = d.c; a.download = "ghost_file"; a.click();
             } else {
-                document.body.innerHTML = `<h1>${d.c}</h1><br><a href="?" style="color:gray">Retour</a>`;
+                document.body.innerHTML = `<div style="color:white;text-align:center;padding:50px;">
+                    <h1 style="font-size:2rem;">${d.c}</h1>
+                    <br><a href="?" style="color:#555;text-decoration:none;">← Retour</a>
+                </div>`;
             }
-        } catch(e) { alert("Lien invalide"); }
+        } catch(e) { 
+            alert("Erreur : Le lien est corrompu ou mal formé."); 
+        }
     }
 
     function copy() {
-        navigator.clipboard.writeText(document.getElementById('out').innerText);
-        alert("Lien copié !");
+        const txt = document.getElementById('out').innerText;
+        if(txt.includes('http')) {
+            navigator.clipboard.writeText(txt);
+            alert("Lien copié dans le presse-papier !");
+        }
     }
 </script>
 </body>
