@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ghost-Vault</title>
+    <style>
+        :root { --accent: #0070f3; --bg: #050505; --card: #111; }
+        body { font-family: sans-serif; background: var(--bg); color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: var(--card); padding: 2rem; border-radius: 12px; border: 1px solid #333; width: 90%; max-width: 400px; text-align: center; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; box-sizing: border-box; background: #000; color: white; }
+        button { background: var(--accent); border: none; font-weight: bold; cursor: pointer; }
+        .res { font-size: 0.75rem; color: var(--accent); word-break: break-all; margin-top: 15px; cursor: pointer; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div id="view" class="hidden">
+        <h2>Accès Sécurisé</h2>
+        <input type="password" id="pv" placeholder="Mot de passe">
+        <button onclick="unlock()">Déverrouiller</button>
+    </div>
+
+    <div id="create">
+        <h1>Ghost-Vault</h1>
+        <select id="t" onchange="document.getElementById('m').type = (this.value==='f') ? 'file' : 'text'">
+            <option value="m">Message</option>
+            <option value="u">Redirection URL</option>
+            <option value="f">Fichier (<1Mo)</option>
+        </select>
+        <input type="text" id="m" placeholder="Contenu ou URL">
+        <input type="password" id="p" placeholder="Mot de passe">
+        <button onclick="gen()">Générer le lien</button>
+        <div id="out" class="res" onclick="copy()"></div>
+    </div>
+</div>
+
+<script>
+    const h = window.location.hash.substring(1);
+    if(h) {
+        document.getElementById('create').classList.add('hidden');
+        document.getElementById('view').classList.remove('hidden');
+    }
+
+    async function gen() {
+        const type = document.getElementById('t').value;
+        const pass = document.getElementById('p').value;
+        let content = "";
+
+        if(type === 'f') {
+            const file = document.getElementById('m').files[0];
+            if(!file) return;
+            content = await new Promise(r => { const rd = new FileReader(); rd.onload=()=>r(rd.result); rd.readAsDataURL(file); });
+        } else {
+            content = document.getElementById('m').value;
+        }
+
+        const data = btoa(encodeURIComponent(JSON.stringify({t:type, c:content, p:pass})));
+        document.getElementById('out').innerText = window.location.origin + window.location.pathname + "#" + data;
+    }
+
+    function unlock() {
+        try {
+            const d = JSON.parse(decodeURIComponent(atob(h)));
+            if(document.getElementById('pv').value !== d.p) return alert("Code erroné");
+
+            if(d.t === 'u') window.location.href = d.c;
+            else if(d.t === 'f') {
+                const a = document.createElement('a'); a.href = d.c; a.download = "ghost_file"; a.click();
+            } else {
+                document.body.innerHTML = `<h1>${d.c}</h1><br><a href="?" style="color:gray">Retour</a>`;
+            }
+        } catch(e) { alert("Lien invalide"); }
+    }
+
+    function copy() {
+        navigator.clipboard.writeText(document.getElementById('out').innerText);
+        alert("Lien copié !");
+    }
+</script>
+</body>
+</html>
