@@ -3,111 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ghost-Vault</title>
+    <title>Ghost-Vault | Ultra-Safe</title>
     <style>
         :root { --accent: #0070f3; --bg: #050505; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: #111; padding: 2rem; border-radius: 12px; border: 1px solid #333; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #000; color: white; font-size: 14px; }
-        button { background: var(--accent); border: none; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
-        button:hover { opacity: 0.8; }
-        #out { font-size: 11px; color: var(--accent); word-break: break-all; margin-top: 15px; cursor: pointer; border: 1px dashed #333; padding: 10px; background: rgba(0,112,243,0.05); }
+        body { font-family: sans-serif; background: var(--bg); color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #111; padding: 2rem; border-radius: 12px; border: 1px solid #333; width: 90%; max-width: 400px; text-align: center; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #000; color: white; }
+        button { background: var(--accent); border: none; font-weight: bold; cursor: pointer; }
+        #out { font-size: 10px; color: var(--accent); word-break: break-all; margin-top: 15px; cursor: pointer; border: 1px dashed #333; padding: 10px; min-height: 20px; }
         .hidden { display: none; }
-        h1 { font-size: 1.5rem; margin-bottom: 1rem; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <div id="view" class="hidden">
-        <h1>Coffre Scellé</h1>
-        <p style="color:#888; font-size: 0.9rem;">Entrez le code pour déchiffrer</p>
+        <h1>Accès Sécurisé</h1>
         <input type="password" id="pv" placeholder="Mot de passe">
-        <button onclick="unlock()">DÉVERROUILLER</button>
+        <button onclick="unlock()">DÉCHIFFRER</button>
     </div>
 
     <div id="create">
         <h1>Ghost-Vault</h1>
         <select id="t" onchange="toggle()">
-            <option value="m">Message Texte</option>
-            <option value="u">Redirection URL</option>
-            <option value="f">Fichier (< 1Mo)</option>
+            <option value="m">Message</option>
+            <option value="u">Lien (Redirection)</option>
+            <option value="f">Fichier</option>
         </select>
-        <input type="text" id="m" placeholder="Votre message ou URL...">
+        <input type="text" id="m" placeholder="Contenu...">
         <input type="file" id="fi" class="hidden">
-        <input type="password" id="p" placeholder="Mot de passe (optionnel)">
+        <input type="password" id="p" placeholder="Mot de passe">
         <button onclick="gen()">GÉNÉRER LE LIEN</button>
-        <div id="out" onclick="copy()">Le lien apparaîtra ici...</div>
+        <div id="out" onclick="copy()"></div>
     </div>
 </div>
 
 <script>
     const h = window.location.hash.substring(1);
-
-    // Bascule entre création et lecture
     if(h) {
         document.getElementById('create').classList.add('hidden');
         document.getElementById('view').classList.remove('hidden');
     }
 
-    // Gère l'affichage selon le type choisi
     function toggle() {
-        const isFile = document.getElementById('t').value === 'f';
-        document.getElementById('m').classList.toggle('hidden', isFile);
-        document.getElementById('fi').classList.toggle('hidden', !isFile);
+        const isF = document.getElementById('t').value === 'f';
+        document.getElementById('m').classList.toggle('hidden', isF);
+        document.getElementById('fi').classList.toggle('hidden', !isF);
     }
 
-    // Génération du lien
+    // Encodage UTF-8 vers Base64
+    function utob(str) {
+        return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
+    }
+
+    // Décodage Base64 vers UTF-8
+    function btou(str) {
+        return decodeURIComponent(Array.prototype.map.call(atob(str), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    }
+
     async function gen() {
         const type = document.getElementById('t').value;
-        let content = "";
+        let content = (type === 'f') ? 
+            await new Promise(r => { const rd = new FileReader(); rd.onload=()=>r(rd.result); rd.readAsDataURL(document.getElementById('fi').files[0]); }) : 
+            document.getElementById('m').value;
 
-        if(type === 'f') {
-            const file = document.getElementById('fi').files[0];
-            if(!file) return alert("Sélectionnez un fichier");
-            content = await new Promise(r => { const rd = new FileReader(); rd.onload=()=>r(rd.result); rd.readAsDataURL(file); });
-        } else {
-            content = document.getElementById('m').value;
-        }
-
-        // Encodage UTF-8 Safe
-        const data = btoa(unescape(encodeURIComponent(JSON.stringify({
-            t: type, 
-            c: content, 
-            p: document.getElementById('p').value
-        }))));
-
-        const finalURL = window.location.origin + window.location.pathname + "#" + data;
-        document.getElementById('out').innerText = finalURL;
+        const data = utob(JSON.stringify({t: type, c: content, p: document.getElementById('p').value}));
+        document.getElementById('out').innerText = window.location.origin + window.location.pathname + "#" + data;
     }
 
-    // Décodage et action
     function unlock() {
         try {
-            const d = JSON.parse(decodeURIComponent(escape(atob(h))));
-            if(document.getElementById('pv').value !== d.p) return alert("Code incorrect");
-
-            if(d.t === 'u') {
-                window.location.href = d.c;
-            } else if(d.t === 'f') {
-                const a = document.createElement('a'); a.href = d.c; a.download = "ghost_file"; a.click();
-            } else {
-                document.body.innerHTML = `<div style="color:white;text-align:center;padding:50px;">
-                    <h1 style="font-size:2rem;">${d.c}</h1>
-                    <br><a href="?" style="color:#555;text-decoration:none;">← Retour</a>
-                </div>`;
-            }
-        } catch(e) { 
-            alert("Erreur : Le lien est corrompu ou mal formé."); 
-        }
+            const d = JSON.parse(btou(h));
+            if(document.getElementById('pv').value !== d.p) return alert("Mauvais mot de passe");
+            
+            if(d.t === 'u') window.location.href = d.c;
+            else if(d.t === 'f') { const a = document.createElement('a'); a.href = d.c; a.download = "ghost_file"; a.click(); }
+            else document.body.innerHTML = `<h1 style="color:white;text-align:center;margin-top:20%">${d.c}</h1>`;
+        } catch(e) { alert("Erreur de décodage. Le lien est peut-être coupé."); }
     }
 
     function copy() {
-        const txt = document.getElementById('out').innerText;
-        if(txt.includes('http')) {
-            navigator.clipboard.writeText(txt);
-            alert("Lien copié dans le presse-papier !");
-        }
+        navigator.clipboard.writeText(document.getElementById('out').innerText);
+        alert("Lien copié !");
     }
 </script>
 </body>
