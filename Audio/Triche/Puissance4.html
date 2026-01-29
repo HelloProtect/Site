@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Puissance 4 contre Bot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(7, 70px);
+      grid-template-rows: repeat(6, 70px);
+      gap: 6px;
+      background: #1e3a8a;
+      padding: 10px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+
+    .cell {
+      width: 70px;
+      height: 70px;
+      background: #020617;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .player {
+      background: #ef4444;
+    }
+
+    .bot {
+      background: #facc15;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-size: 1.2rem;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    button:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Puissance 4 vs Bot</h1>
+
+  <div id="board"></div>
+
+  <div id="status">À ton tour</div>
+
+  <button onclick="resetGame()">Recommencer</button>
+
+  <script>
+    const ROWS = 6;
+    const COLS = 7;
+
+    let board = [];
+    let gameOver = false;
+
+    const boardDiv = document.getElementById("board");
+    const statusDiv = document.getElementById("status");
+
+    function initBoard() {
+      board = [];
+      boardDiv.innerHTML = "";
+      gameOver = false;
+      statusDiv.textContent = "À ton tour";
+
+      for (let r = 0; r < ROWS; r++) {
+        board[r] = [];
+        for (let c = 0; c < COLS; c++) {
+          board[r][c] = 0;
+
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+          cell.dataset.col = c;
+          cell.addEventListener("click", handlePlayerMove);
+
+          boardDiv.appendChild(cell);
+        }
+      }
+    }
+
+    function handlePlayerMove(e) {
+      if (gameOver) return;
+
+      const col = parseInt(e.target.dataset.col);
+      if (!dropPiece(col, 1)) return;
+
+      render();
+
+      if (checkWin(1)) {
+        statusDiv.textContent = "🎉 Tu as gagné !";
+        gameOver = true;
+        return;
+      }
+
+      if (isFull()) {
+        statusDiv.textContent = "Match nul";
+        gameOver = true;
+        return;
+      }
+
+      statusDiv.textContent = "Tour du bot...";
+
+      setTimeout(botMove, 500);
+    }
+
+    function botMove() {
+      if (gameOver) return;
+
+      let col = findBestMove();
+      dropPiece(col, 2);
+      render();
+
+      if (checkWin(2)) {
+        statusDiv.textContent = "🤖 Le bot a gagné";
+        gameOver = true;
+        return;
+      }
+
+      if (isFull()) {
+        statusDiv.textContent = "Match nul";
+        gameOver = true;
+        return;
+      }
+
+      statusDiv.textContent = "À ton tour";
+    }
+
+    function dropPiece(col, player) {
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r][col] === 0) {
+          board[r][col] = player;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function render() {
+      const cells = document.querySelectorAll(".cell");
+
+      cells.forEach((cell, index) => {
+        const r = Math.floor(index / COLS);
+        const c = index % COLS;
+
+        cell.classList.remove("player", "bot");
+
+        if (board[r][c] === 1) {
+          cell.classList.add("player");
+        } else if (board[r][c] === 2) {
+          cell.classList.add("bot");
+        }
+      });
+    }
+
+    function checkWin(player) {
+      // Horizontal
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS - 3; c++) {
+          if (checkLine(player, r, c, 0, 1)) return true;
+        }
+      }
+
+      // Vertical
+      for (let r = 0; r < ROWS - 3; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (checkLine(player, r, c, 1, 0)) return true;
+        }
+      }
+
+      // Diagonal \
+      for (let r = 0; r < ROWS - 3; r++) {
+        for (let c = 0; c < COLS - 3; c++) {
+          if (checkLine(player, r, c, 1, 1)) return true;
+        }
+      }
+
+      // Diagonal /
+      for (let r = 3; r < ROWS; r++) {
+        for (let c = 0; c < COLS - 3; c++) {
+          if (checkLine(player, r, c, -1, 1)) return true;
+        }
+      }
+
+      return false;
+    }
+
+    function checkLine(player, r, c, dr, dc) {
+      for (let i = 0; i < 4; i++) {
+        if (board[r + dr * i][c + dc * i] !== player) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function isFull() {
+      return board[0].every(cell => cell !== 0);
+    }
+
+    // IA simple
+    function findBestMove() {
+      // Gagner si possible
+      for (let c = 0; c < COLS; c++) {
+        if (tryMove(c, 2)) return c;
+      }
+
+      // Bloquer le joueur
+      for (let c = 0; c < COLS; c++) {
+        if (tryMove(c, 1)) return c;
+      }
+
+      // Choix aléatoire valide
+      let valid = [];
+      for (let c = 0; c < COLS; c++) {
+        if (board[0][c] === 0) valid.push(c);
+      }
+
+      return valid[Math.floor(Math.random() * valid.length)];
+    }
+
+    function tryMove(col, player) {
+      let row = -1;
+
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r][col] === 0) {
+          row = r;
+          break;
+        }
+      }
+
+      if (row === -1) return false;
+
+      board[row][col] = player;
+      const win = checkWin(player);
+      board[row][col] = 0;
+
+      return win;
+    }
+
+    function resetGame() {
+      initBoard();
+    }
+
+    initBoard();
+  </script>
+
+</body>
+</html>
