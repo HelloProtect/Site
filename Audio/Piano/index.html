@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Générateur Piano → Ableton</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: white;
+    text-align: center;
+    padding: 30px;
+}
+
+input {
+    width: 300px;
+    padding: 10px;
+    font-size: 18px;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    margin: 10px;
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎹 Générateur de Partition Piano</h1>
+
+<p>Entre ta suite (ex: 1-37-30-25)</p>
+
+<input id="sequence" placeholder="1-37-30-25">
+
+<br>
+
+<button onclick="play()">▶ Aperçu</button>
+<button onclick="exportMIDI()">💾 Export MIDI</button>
+
+<script>
+
+// Audio
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// Conversion chiffre → note MIDI
+function numberToMidi(n) {
+    return 60 + (n % 36); // Base = Do4
+}
+
+// Jouer une note
+function playNote(freq, time) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.value = freq;
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start(time);
+    osc.stop(time + 0.4);
+
+    gain.gain.setValueAtTime(0.8, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+}
+
+// Aperçu audio
+function play() {
+
+    const input = document.getElementById("sequence").value;
+    const notes = input.split("-").map(n => parseInt(n));
+
+    let t = audioCtx.currentTime;
+
+    notes.forEach((n, i) => {
+
+        const midi = numberToMidi(n);
+        const freq = 440 * Math.pow(2, (midi - 69) / 12);
+
+        playNote(freq, t + i * 0.5);
+    });
+}
+
+// Export MIDI
+function exportMIDI() {
+
+    const input = document.getElementById("sequence").value;
+    const notes = input.split("-").map(n => parseInt(n));
+
+    let midiData = [];
+
+    // Header MIDI
+    midiData.push(
+        "4d54686400000006000100010060",
+        "4d54726b"
+    );
+
+    let track = "";
+
+    let time = 0;
+
+    notes.forEach(n => {
+
+        const midi = numberToMidi(n);
+
+        // Note ON
+        track += "00" + "90" + toHex(midi) + "64";
+
+        // Durée
+        track += "30";
+
+        // Note OFF
+        track += "80" + toHex(midi) + "00";
+    });
+
+    // Fin piste
+    track += "00FF2F00";
+
+    const length = track.length / 2;
+    midiData.push(toHex32(length));
+    midiData.push(track);
+
+    const hex = midiData.join("");
+
+    download(hexToBytes(hex));
+}
+
+// Helpers
+function toHex(n) {
+    return n.toString(16).padStart(2, "0");
+}
+
+function toHex32(n) {
+    return n.toString(16).padStart(8, "0");
+}
+
+function hexToBytes(hex) {
+
+    let bytes = [];
+
+    for (let i = 0; i < hex.length; i += 2) {
+        bytes.push(parseInt(hex.substr(i, 2), 16));
+    }
+
+    return new Uint8Array(bytes);
+}
+
+function download(data) {
+
+    const blob = new Blob([data], { type: "audio/midi" });
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = "piano.mid";
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+
+</script>
+
+</body>
+</html>
