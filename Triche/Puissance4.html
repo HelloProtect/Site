@@ -105,6 +105,56 @@
       transform: translateY(0);
       box-shadow: 0 4px 10px rgba(37,99,235,0.5);
     }
+  
+
+    /* Responsive Mobile */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      #board {
+        grid-template-columns: repeat(7, 48px);
+        grid-template-rows: repeat(6, 48px);
+        gap: 5px;
+        padding: 10px;
+        border-radius: 14px;
+      }
+
+      .cell {
+        width: 48px;
+        height: 48px;
+      }
+
+      #status {
+        font-size: 1rem;
+        margin-top: 12px;
+        padding: 6px 14px;
+      }
+
+      button {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+        margin-top: 14px;
+      }
+
+      body {
+        padding: 10px;
+      }
+    }
+
+    @media (max-width: 400px) {
+      #board {
+        grid-template-columns: repeat(7, 42px);
+        grid-template-rows: repeat(6, 42px);
+        gap: 4px;
+      }
+
+      .cell {
+        width: 42px;
+        height: 42px;
+      }
+    }
   </style>
 </head>
 <body>
