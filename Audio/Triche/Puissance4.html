@@ -231,44 +231,79 @@
       return board[0].every(cell => cell !== 0);
     }
 
-    // IA simple
+    // IA avancée (Minimax)
     function findBestMove() {
-      // Gagner si possible
+      let bestScore = -Infinity;
+      let bestCol = 0;
+
       for (let c = 0; c < COLS; c++) {
-        if (tryMove(c, 2)) return c;
-      }
+        if (board[0][c] === 0) {
+          let r = getRow(c);
+          board[r][c] = 2;
+          let score = minimax(0, false, -Infinity, Infinity);
+          board[r][c] = 0;
 
-      // Bloquer le joueur
-      for (let c = 0; c < COLS; c++) {
-        if (tryMove(c, 1)) return c;
-      }
-
-      // Choix aléatoire valide
-      let valid = [];
-      for (let c = 0; c < COLS; c++) {
-        if (board[0][c] === 0) valid.push(c);
-      }
-
-      return valid[Math.floor(Math.random() * valid.length)];
-    }
-
-    function tryMove(col, player) {
-      let row = -1;
-
-      for (let r = ROWS - 1; r >= 0; r--) {
-        if (board[r][col] === 0) {
-          row = r;
-          break;
+          if (score > bestScore) {
+            bestScore = score;
+            bestCol = c;
+          }
         }
       }
 
-      if (row === -1) return false;
+      return bestCol;
+    }
 
-      board[row][col] = player;
-      const win = checkWin(player);
-      board[row][col] = 0;
+    function minimax(depth, isMaximizing, alpha, beta) {
+      if (checkWin(2)) return 100 - depth;
+      if (checkWin(1)) return depth - 100;
+      if (isFull() || depth >= 5) return 0;
 
-      return win;
+      if (isMaximizing) {
+        let maxEval = -Infinity;
+
+        for (let c = 0; c < COLS; c++) {
+          if (board[0][c] === 0) {
+            let r = getRow(c);
+            board[r][c] = 2;
+
+            let eval = minimax(depth + 1, false, alpha, beta);
+            board[r][c] = 0;
+
+            maxEval = Math.max(maxEval, eval);
+            alpha = Math.max(alpha, eval);
+
+            if (beta <= alpha) break;
+          }
+        }
+
+        return maxEval;
+      } else {
+        let minEval = Infinity;
+
+        for (let c = 0; c < COLS; c++) {
+          if (board[0][c] === 0) {
+            let r = getRow(c);
+            board[r][c] = 1;
+
+            let eval = minimax(depth + 1, true, alpha, beta);
+            board[r][c] = 0;
+
+            minEval = Math.min(minEval, eval);
+            beta = Math.min(beta, eval);
+
+            if (beta <= alpha) break;
+          }
+        }
+
+        return minEval;
+      }
+    }
+
+    function getRow(col) {
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r][col] === 0) return r;
+      }
+      return -1;
     }
 
     function resetGame() {
