@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puissance 4 Pro</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: radial-gradient(circle at top, #1e293b, #020617);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+
+        select, button {
+            padding: 10px 20px;
+            border-radius: 999px;
+            border: none;
+            background: #2563eb;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(7, 70px);
+            grid-template-rows: repeat(6, 70px);
+            gap: 8px;
+            background: #1e40af;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .cell {
+            width: 70px;
+            height: 70px;
+            background: #020617;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .player { background: radial-gradient(circle, #f87171, #b91c1c); }
+        .bot { background: radial-gradient(circle, #fde047, #ca8a04); }
+
+        #status { margin-top: 20px; font-size: 1.5rem; font-weight: bold; }
+        
+        @media (max-width: 550px) {
+            #board { grid-template-columns: repeat(7, 45px); grid-template-rows: repeat(6, 45px); }
+            .cell { width: 45px; height: 45px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Puissance 4 vs Bot</h1>
+
+    <div class="controls">
+        <select id="startPlayer">
+            <option value="1">Joueur commence</option>
+            <option value="2">IA commence</option>
+        </select>
+        <button onclick="resetGame()">Nouveau Match</button>
+    </div>
+
+    <div id="board"></div>
+    <div id="status">À ton tour</div>
+
+<script>
+    const ROWS = 6, COLS = 7;
+    let board = [], gameOver = false;
+
+    function initBoard() {
+        board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+        gameOver = false;
+        const boardDiv = document.getElementById("board");
+        boardDiv.innerHTML = "";
+        
+        for (let i = 0; i < ROWS * COLS; i++) {
+            const cell = document.createElement("div");
+            cell.classList.add("cell");
+            cell.dataset.col = i % COLS;
+            cell.addEventListener("click", () => handleMove(parseInt(cell.dataset.col)));
+            boardDiv.appendChild(cell);
+        }
+
+        const firstMove = document.getElementById("startPlayer").value;
+        if (firstMove == "2") {
+            document.getElementById("status").textContent = "L'IA réfléchit...";
+            setTimeout(botMove, 500);
+        } else {
+            document.getElementById("status").textContent = "À ton tour";
+        }
+        render();
+    }
+
+    function handleMove(col) {
+        if (gameOver || !dropPiece(col, 1)) return;
+        if (checkWin(1)) return end("🎉 Gagné !");
+        if (isFull()) return end("Match nul");
+        
+        document.getElementById("status").textContent = "L'IA réfléchit...";
+        setTimeout(botMove, 400);
+    }
+
+    function botMove() {
+        if (gameOver) return;
+        let col = findBestMove();
+        dropPiece(col, 2);
+        if (checkWin(2)) return end("🤖 Le bot a gagné");
+        if (isFull()) return end("Match nul");
+        document.getElementById("status").textContent = "À ton tour";
+        render();
+    }
+
+    function dropPiece(col, p) {
+        for (let r = ROWS - 1; r >= 0; r--) {
+            if (board[r][col] === 0) { board[r][col] = p; render(); return true; }
+        }
+        return false;
+    }
+
+    function findBestMove() {
+        let bestScore = -Infinity, bestCol = 3;
+        const order = [3, 2, 4, 1, 5, 0, 6]; // Stratégie centrale
+
+        for (let c of order) {
+            let r = getRow(c);
+            if (r !== -1) {
+                board[r][c] = 2;
+                let score = minimax(0, false, -Infinity, Infinity);
+                board[r][c] = 0;
+                if (score > bestScore) { bestScore = score; bestCol = c; }
+            }
+        }
+        return bestCol;
+    }
+
+    function minimax(depth, isMax, alpha, beta) {
+        if (checkWin(2)) return 1000 - depth;
+        if (checkWin(1)) return depth - 1000;
+        if (depth >= 6 || isFull()) return evaluate();
+
+        let scores = isMax ? -Infinity : Infinity;
+        for (let c = 0; c < COLS; c++) {
+            let r = getRow(c);
+            if (r !== -1) {
+                board[r][c] = isMax ? 2 : 1;
+                let val = minimax(depth + 1, !isMax, alpha, beta);
+                board[r][c] = 0;
+                if (isMax) { scores = Math.max(scores, val); alpha = Math.max(alpha, val); }
+                else { scores = Math.min(scores, val); beta = Math.min(beta, val); }
+                if (beta <= alpha) break;
+            }
+        }
+        return scores;
+    }
+
+    function evaluate() {
+        let score = 0;
+        for (let r = 0; r < ROWS; r++) if (board[r][3] === 2) score += 3; // Bonus centre
+        return score;
+    }
+
+    function checkWin(p) {
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (checkDir(r, c, 0, 1, p) || checkDir(r, c, 1, 0, p) || 
+                    checkDir(r, c, 1, 1, p) || checkDir(r, c, 1, -1, p)) return true;
+            }
+        }
+        return false;
+    }
+
+    function checkDir(r, c, dr, dc, p) {
+        let count = 0;
+        for (let i = 0; i < 4; i++) {
+            let nr = r + dr * i, nc = c + dc * i;
+            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && board[nr][nc] === p) count++;
+            else break;
+        }
+        return count === 4;
+    }
+
+    function getRow(c) {
+        for (let r = ROWS - 1; r >= 0; r--) if (board[r][c] === 0) return r;
+        return -1;
+    }
+
+    function render() {
+        const cells = document.querySelectorAll(".cell");
+        board.flat().forEach((val, i) => {
+            cells[i].className = "cell" + (val === 1 ? " player" : val === 2 ? " bot" : "");
+        });
+    }
+
+    function isFull() { return board[0].every(c => c !== 0); }
+    function end(msg) { document.getElementById("status").textContent = msg; gameOver = true; render(); }
+    function resetGame() { initBoard(); }
+
+    initBoard();
+</script>
+</body>
+</html>
