@@ -2,510 +2,248 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Puissance 4 Ultimate Edition</title>
+    <title>Puissance 4 Alpha-Beta V2</title>
     <style>
-        :root {
-            --bg: #020617;
-            --panel: #0f172a;
-            --blue: #2563eb;
-            --player: #ef4444;
-            --bot: #f59e0b;
-            --cell: #1e293b;
-        }
+        :root { --bg: #010409; --board: #1f6feb; --player: #ff7b72; --bot: #f2cc60; --text: #c9d1d9; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        
+        /* HEADER & STATS */
+        .header { text-align: center; margin-bottom: 20px; width: 100%; max-width: 500px; }
+        .ai-chat { min-height: 40px; color: #8b949e; font-style: italic; font-size: 0.9rem; margin: 10px 0; }
+        
+        .gauge-container { width: 90%; background: #21262d; height: 30px; border-radius: 15px; position: relative; overflow: hidden; border: 2px solid #30363d; margin-bottom: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        #win-bar { width: 50%; height: 100%; background: linear-gradient(90deg, var(--player) 0%, #ab7df8 50%, var(--bot) 100%); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        .gauge-labels { position: absolute; top: 0; width: 100%; height: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 15px; box-sizing: border-box; font-weight: bold; text-shadow: 1px 1px 2px #000; pointer-events: none; }
 
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: var(--bg);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            overflow-x: hidden;
-        }
+        /* PLATEAU */
+        #game-area { position: relative; padding: 15px; background: var(--board); border-radius: 10px; box-shadow: 0 15px 40px rgba(0,0,0,0.8); }
+        #grid { display: grid; grid-template-columns: repeat(7, 60px); grid-template-rows: repeat(6, 60px); gap: 10px; }
+        .cell { width: 60px; height: 60px; background: var(--bg); border-radius: 50%; cursor: pointer; position: relative; box-shadow: inset 0 4px 10px rgba(0,0,0,0.9); }
+        
+        .piece { width: 100%; height: 100%; border-radius: 50%; animation: drop 0.4s cubic-bezier(0.12, 0, 0.39, 0); }
+        .p1 { background: radial-gradient(circle at 30% 30%, #ff7b72, #8e1519); box-shadow: 0 0 15px rgba(255,123,114,0.4); }
+        .p2 { background: radial-gradient(circle at 30% 30%, #f2cc60, #967300); box-shadow: 0 0 15px rgba(242,204,96,0.4); }
 
-        /* --- UI & Header --- */
-        .header {
-            margin: 20px 0;
-            text-align: center;
-        }
+        @keyframes drop { from { transform: translateY(-350px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(to right, #60a5fa, #2563eb);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 5px;
-        }
-
-        .ai-message {
-            height: 24px;
-            color: #94a3b8;
-            font-style: italic;
-            margin-bottom: 10px;
-        }
-
-        /* --- Stats & Probability Bar --- */
-        .stats-box {
-            width: 400px;
-            background: var(--panel);
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            margin-bottom: 20px;
-        }
-
-        .bar-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-weight: bold;
-        }
-
-        .bar-container {
-            width: 100%;
-            height: 14px;
-            background: #334155;
-            border-radius: 7px;
-            overflow: hidden;
-            border: 1px solid #475569;
-        }
-
-        #win-bar {
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(90deg, var(--player), #8b5cf6, var(--bot));
-            transition: width 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        /* --- The Board --- */
-        #game-container {
-            position: relative;
-            padding: 15px;
-            background: var(--blue);
-            border-radius: 15px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-        }
-
-        #grid {
-            display: grid;
-            grid-template-columns: repeat(7, 60px);
-            grid-template-rows: repeat(6, 60px);
-            gap: 10px;
-        }
-
-        .cell {
-            width: 60px;
-            height: 60px;
-            background: var(--bg);
-            border-radius: 50%;
-            cursor: pointer;
-            position: relative;
-            box-shadow: inset 0 4px 8px rgba(0,0,0,0.8);
-            transition: transform 0.2s ease;
-        }
-
-        .cell:hover {
-            transform: scale(1.05);
-            background: #0f172a;
-        }
-
-        /* --- Pieces & Animations --- */
-        .piece {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            animation: drop 0.5s bounce;
-        }
-
-        .p1 { 
-            background: radial-gradient(circle at 30% 30%, #f87171, #991b1b);
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
-        }
-
-        .p2 { 
-            background: radial-gradient(circle at 30% 30%, #fbbf24, #92400e);
-            box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
-        }
-
-        @keyframes drop {
-            0% { transform: translateY(-300px); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
-        }
-
-        /* --- Controls --- */
-        .controls {
-            margin-top: 30px;
-            display: flex;
-            gap: 15px;
-        }
-
-        .btn {
-            background: var(--panel);
-            color: white;
-            border: 1px solid #334155;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-
-        .btn:hover {
-            background: #1e293b;
-            border-color: var(--blue);
-        }
-
-        .btn-primary {
-            background: var(--blue);
-            border: none;
-        }
-
-        select {
-            background: var(--panel);
-            color: white;
-            border: 1px solid #334155;
-            padding: 10px;
-            border-radius: 8px;
-        }
-
-        /* --- History Panel --- */
-        #history {
-            position: fixed;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 150px;
-            background: var(--panel);
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .hist-item {
-            padding: 5px;
-            border-bottom: 1px solid #1e293b;
-            color: #94a3b8;
-        }
-
-        .win-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 15px;
-            z-index: 10;
-        }
+        /* CONTROLES */
+        .controls { margin-top: 25px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        select, button { background: #21262d; color: var(--text); border: 1px solid #30363d; padding: 10px 15px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #30363d; border-color: #8b949e; }
+        .win-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; z-index: 10; font-size: 2rem; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>Connect 4 AI Ultra</h1>
-        <div id="ai-chat" class="ai-message">Prêt à perdre ?</div>
-    </div>
+<div class="header">
+    <h1>AI Dominator v2</h1>
+    <div id="ai-chat" class="ai-chat">Analyse de la grille...</div>
+</div>
 
-    <div class="stats-box">
-        <div class="bar-label">
-            <span>Joueur</span>
-            <span id="win-pct">50%</span>
-            <span>IA</span>
-        </div>
-        <div class="bar-container">
-            <div id="win-bar"></div>
-        </div>
+<div class="gauge-container">
+    <div id="win-bar"></div>
+    <div class="gauge-labels">
+        <span>MOI</span>
+        <span id="pct-label">50%</span>
+        <span>BOT</span>
     </div>
+</div>
 
-    <div id="game-container">
-        <div id="grid"></div>
-        <div id="win-overlay" class="win-overlay">
-            <h2 id="win-msg" style="font-size: 2rem;">Gagné !</h2>
-            <button class="btn btn-primary" onclick="resetGame()">Rejouer</button>
-        </div>
+<div id="game-area">
+    <div id="grid"></div>
+    <div id="win-overlay" class="win-overlay">
+        <div id="win-msg">MATCH NUL</div>
+        <button onclick="resetGame()" style="margin-top: 20px;">REVANCHE</button>
     </div>
+</div>
 
-    <div class="controls">
-        <select id="diff">
-            <option value="4">Facile (Enfant)</option>
-            <option value="6">Moyen (Humain)</option>
-            <option value="8" selected>Difficile (Alpha-Beta)</option>
-            <option value="10">Légendaire (Imbattable)</option>
-        </select>
-        <select id="starter">
-            <option value="1">Moi en premier</option>
-            <option value="2">IA en premier</option>
-        </select>
-        <button class="btn" onclick="resetGame()">Reset</button>
-    </div>
-
-    <div id="history">
-        <strong style="display:block; margin-bottom:10px;">HISTORIQUE</strong>
-        <div id="hist-list"></div>
-    </div>
+<div class="controls">
+    <select id="diff">
+        <option value="4">Niveau : Amateur</option>
+        <option value="6" selected>Niveau : Expert</option>
+        <option value="8">Niveau : Grand Maître</option>
+    </select>
+    <select id="starter">
+        <option value="1">Je commence</option>
+        <option value="2">Le Bot commence</option>
+    </select>
+    <button onclick="resetGame()">RESET</button>
+</div>
 
 <script>
-    /* --- CONFIGURATION & ÉTAT --- */
-    const ROWS = 6;
-    const COLS = 7;
-    let board = [];
-    let isGameOver = false;
-    let currentPlayer = 1;
-    let moveHistory = [];
+    const ROWS = 6, COLS = 7;
+    let board = [], over = false, curPlayer = 1;
 
-    const CHAT_MSGS = {
-        start: ["Bonne chance, tu en auras besoin.", "Prêt pour une leçon ?", "Je te laisse une chance."],
-        ai_turn: ["Laisse-moi réfléchir...", "C'est trop facile.", "Hmm, intéressant.", "Tu joues vraiment ça ?"],
-        player_win: ["Quoi ? Impossible !", "Tu as triché ?", "Belle chance..."],
-        ai_win: ["Comme prévu.", "Même pas besoin de forcer.", "Retourne t'entraîner.", "Mathématiquement fini."]
-    };
-
-    /* --- INITIALISATION --- */
     function init() {
         board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
-        isGameOver = false;
-        moveHistory = [];
-        document.getElementById('hist-list').innerHTML = '';
+        over = false;
+        document.getElementById('grid').innerHTML = '';
         document.getElementById('win-overlay').style.display = 'none';
-        
-        const grid = document.getElementById('grid');
-        grid.innerHTML = '';
         
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
-                const cell = document.createElement('div');
+                let cell = document.createElement('div');
                 cell.className = 'cell';
-                cell.id = `cell-${r}-${c}`;
-                cell.onclick = () => handlePlayerMove(c);
-                grid.appendChild(cell);
+                cell.onclick = () => { if(curPlayer === 1 && !over) play(c); };
+                document.getElementById('grid').appendChild(cell);
             }
         }
-
-        currentPlayer = parseInt(document.getElementById('starter').value);
-        say(CHAT_MSGS.start);
-        
-        if (currentPlayer === 2) {
-            setTimeout(executeAiMove, 600);
-        }
+        curPlayer = parseInt(document.getElementById('starter').value);
+        if (curPlayer === 2) setTimeout(aiPlay, 500);
         updateStats(0);
     }
 
-    /* --- LOGIQUE DE JEU --- */
-    function handlePlayerMove(col) {
-        if (isGameOver || currentPlayer !== 1) return;
+    function play(col) {
+        let r = getOpenRow(board, col);
+        if (r === -1) return;
         
-        if (makeMove(col, 1)) {
-            if (checkWin(board, 1)) return endGame(1);
-            if (isBoardFull()) return endGame(0);
-            
-            currentPlayer = 2;
-            say(CHAT_MSGS.ai_turn);
-            setTimeout(executeAiMove, 500);
+        board[r][col] = curPlayer;
+        drawPiece(r, col, curPlayer);
+        
+        if (checkWin(board, curPlayer)) return end(curPlayer);
+        if (board[0].every(c => c !== 0)) return end(0);
+        
+        curPlayer = (curPlayer === 1) ? 2 : 1;
+        if (curPlayer === 2) {
+            document.getElementById('ai-chat').textContent = "Je réfléchis à ton erreur...";
+            setTimeout(aiPlay, 400);
         }
     }
 
-    function makeMove(col, player) {
-        for (let r = ROWS - 1; r >= 0; r--) {
-            if (board[r][col] === 0) {
-                board[r][col] = player;
-                renderPiece(r, col, player);
-                moveHistory.push(`P${player}: Col ${col+1}`);
-                updateHistory();
-                return true;
-            }
-        }
-        return false;
+    function aiPlay() {
+        if (over) return;
+        let depth = parseInt(document.getElementById('diff').value);
+        let result = getBestMove(board, depth);
+        play(result.col);
+        updateStats(result.score);
     }
 
-    function executeAiMove() {
-        if (isGameOver) return;
+    /* --- MOTEUR DE CALCUL --- */
+    function getBestMove(b, depth) {
+        let bestScore = -Infinity, bestCol = 3;
+        const order = [3, 2, 4, 1, 5, 0, 6];
         
-        const depth = parseInt(document.getElementById('diff').value);
-        const bestMove = findBestMove(depth);
-        
-        makeMove(bestMove.col, 2);
-        
-        if (checkWin(board, 2)) return endGame(2);
-        if (isBoardFull()) return endGame(0);
-        
-        currentPlayer = 1;
-        updateStats(bestMove.score);
-    }
-
-    /* --- ALGORITHME MINIMAX + ALPHA-BETA --- */
-    function findBestMove(depth) {
-        let bestScore = -Infinity;
-        let bestCol = 3;
-        // Ordre d'exploration optimisé (Centre vers Extérieur)
-        const searchOrder = [3, 2, 4, 1, 5, 0, 6];
-
-        for (let col of searchOrder) {
-            let row = getNextOpenRow(board, col);
-            if (row !== -1) {
-                board[row][col] = 2;
-                let score = minimax(board, depth - 1, false, -Infinity, Infinity);
-                board[row][col] = 0;
-                
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestCol = col;
-                }
+        for (let c of order) {
+            let r = getOpenRow(b, c);
+            if (r !== -1) {
+                b[r][c] = 2;
+                let score = minimax(b, depth - 1, false, -Infinity, Infinity);
+                b[r][c] = 0;
+                if (score > bestScore) { bestScore = score; bestCol = c; }
             }
         }
         return { col: bestCol, score: bestScore };
     }
 
-    function minimax(node, depth, isMaximizing, alpha, beta) {
-        const win2 = checkWin(node, 2);
-        const win1 = checkWin(node, 1);
-        
-        if (win2) return 10000 + depth;
-        if (win1) return -10000 - depth;
-        if (depth === 0 || isBoardFull()) return evaluateBoard(node);
+    function minimax(n, d, isMax, a, bt) {
+        if (checkWin(n, 2)) return 10000 + d;
+        if (checkWin(n, 1)) return -10000 - d;
+        if (d === 0) return heuristic(n);
 
-        if (isMaximizing) {
-            let maxEval = -Infinity;
+        if (isMax) {
+            let v = -Infinity;
             for (let c = 0; c < COLS; c++) {
-                let r = getNextOpenRow(node, c);
+                let r = getOpenRow(n, c);
                 if (r !== -1) {
-                    node[r][c] = 2;
-                    let eval = minimax(node, depth - 1, false, alpha, beta);
-                    node[r][c] = 0;
-                    maxEval = Math.max(maxEval, eval);
-                    alpha = Math.max(alpha, eval);
-                    if (beta <= alpha) break;
+                    n[r][c] = 2; v = Math.max(v, minimax(n, d-1, false, a, bt)); n[r][c] = 0;
+                    a = Math.max(a, v); if (bt <= a) break;
                 }
             }
-            return maxEval;
+            return v;
         } else {
-            let minEval = Infinity;
+            let v = Infinity;
             for (let c = 0; c < COLS; c++) {
-                let r = getNextOpenRow(node, c);
+                let r = getOpenRow(n, c);
                 if (r !== -1) {
-                    node[r][c] = 1;
-                    let eval = minimax(node, depth - 1, true, alpha, beta);
-                    node[r][c] = 0;
-                    minEval = Math.min(minEval, eval);
-                    beta = Math.min(beta, eval);
-                    if (beta <= alpha) break;
+                    n[r][c] = 1; v = Math.min(v, minimax(n, d-1, true, a, bt)); n[r][c] = 0;
+                    bt = Math.min(bt, v); if (bt <= a) break;
                 }
             }
-            return minEval;
+            return v;
         }
     }
 
-    /* --- FONCTIONS D'ÉVALUATION --- */
-    function evaluateBoard(b) {
+    /* --- NOUVELLE ÉVALUATION RÉALISTE --- */
+    function heuristic(b) {
         let score = 0;
-        // Bonus central : contrôler la colonne 3 est vital
-        for (let r = 0; r < ROWS; r++) {
-            if (b[r][3] === 2) score += 4;
-            else if (b[r][3] === 1) score -= 4;
+        // Poids énorme sur le centre
+        for(let r=0; r<ROWS; r++) {
+            if(b[r][3] === 2) score += 30;
+            if(b[r][3] === 1) score -= 30;
         }
-        // Score par fenêtres de 4 (simplifié pour performance)
-        score += countHeuristic(b, 2) - countHeuristic(b, 1);
+
+        const evaluateWindow = (w) => {
+            let s = 0;
+            let b2 = w.filter(v => v === 2).length;
+            let b1 = w.filter(v => v === 1).length;
+            let empty = w.filter(v => v === 0).length;
+
+            if (b2 === 3 && empty === 1) s += 100;
+            if (b2 === 2 && empty === 2) s += 10;
+            if (b1 === 3 && empty === 1) s -= 120; // Priorité défense
+            if (b1 === 2 && empty === 2) s -= 15;
+            return s;
+        };
+
+        // Balayage horizontal
+        for (let r=0; r<6; r++) for (let c=0; c<4; c++) score += evaluateWindow([b[r][c], b[r][c+1], b[r][c+2], b[r][c+3]]);
+        // Balayage vertical
+        for (let c=0; c<7; c++) for (let r=0; r<3; r++) score += evaluateWindow([b[r][c], b[r+1][c], b[r+2][c], b[r+3][c]]);
+        // Diagonales
+        for (let r=0; r<3; r++) for (let c=0; c<4; c++) score += evaluateWindow([b[r][c], b[r+1][c+1], b[r+2][c+2], b[r+3][c+3]]);
+        for (let r=0; r<3; r++) for (let c=3; c<7; c++) score += evaluateWindow([b[r][c], b[r+1][c-1], b[r+2][c-2], b[r+3][c-3]]);
+
         return score;
     }
 
-    function countHeuristic(b, p) {
-        let s = 0;
-        // Ce bot cherche surtout les alignements de 3 jetons libres
-        return s; // (Extension possible ici pour plus de complexité)
+    function updateStats(score) {
+        // Transformation logistique du score pour une barre qui bouge bien
+        let winProb = 50 + (score / 15); 
+        if (score > 500) winProb = 98; // IA gagne quasiment
+        if (score < -500) winProb = 2; // Humain gagne quasiment
+        
+        winProb = Math.max(5, Math.min(95, winProb));
+        
+        document.getElementById('win-bar').style.width = winProb + '%';
+        document.getElementById('pct-label').textContent = Math.round(100 - winProb) + '%';
+        
+        // Chat bot selon le score
+        const chat = document.getElementById('ai-chat');
+        if (winProb > 80) chat.textContent = "Regarde ta barre de vie... C'est fini.";
+        else if (winProb > 60) chat.textContent = "Je commence à voir ton futur.";
+        else if (winProb < 40) chat.textContent = "Oh ? Tu joues mieux que prévu.";
+        else chat.textContent = "Analyse en cours... Tu es prévisible.";
     }
 
-    /* --- UTILITAIRES --- */
+    /* --- UTILITAIRES STANDARDS --- */
     function checkWin(b, p) {
-        // Horizontal
-        for (let r=0; r<ROWS; r++) 
-            for (let c=0; c<COLS-3; c++) 
-                if (b[r][c]===p && b[r][c+1]===p && b[r][c+2]===p && b[r][c+3]===p) return true;
-        // Vertical
-        for (let r=0; r<ROWS-3; r++) 
-            for (let c=0; c<COLS; c++) 
-                if (b[r][c]===p && b[r+1][c]===p && b[r+2][c]===p && b[r+3][c]===p) return true;
-        // Diag Pos
-        for (let r=0; r<ROWS-3; r++) 
-            for (let c=0; c<COLS-3; c++) 
-                if (b[r][c]===p && b[r+1][c+1]===p && b[r+2][c+2]===p && b[r+3][c+3]===p) return true;
-        // Diag Neg
-        for (let r=3; r<ROWS; r++) 
-            for (let c=0; c<COLS-3; c++) 
-                if (b[r][c]===p && b[r-1][c+1]===p && b[r-2][c+2]===p && b[r-3][c+3]===p) return true;
+        for (let r=0; r<6; r++) for (let c=0; c<4; c++) if (b[r][c]===p && b[r][c+1]===p && b[r][c+2]===p && b[r][c+3]===p) return true;
+        for (let c=0; c<7; c++) for (let r=0; r<3; r++) if (b[r][c]===p && b[r+1][c]===p && b[r+2][c]===p && b[r+3][c]===p) return true;
+        for (let r=0; r<3; r++) for (let c=0; c<4; c++) if (b[r][c]===p && b[r+1][c+1]===p && b[r+2][c+2]===p && b[r+3][c+3]===p) return true;
+        for (let r=0; r<3; r++) for (let c=3; c<7; c++) if (b[r][c]===p && b[r+1][c-1]===p && b[r+2][c-2]===p && b[r+3][c-3]===p) return true;
         return false;
     }
 
-    function getNextOpenRow(b, c) {
-        for (let r = ROWS - 1; r >= 0; r--) if (b[r][c] === 0) return r;
-        return -1;
-    }
+    function getOpenRow(b, c) { for (let r = 5; r >= 0; r--) if (b[r][c] === 0) return r; return -1; }
 
-    function isBoardFull() {
-        return board[0].every(cell => cell !== 0);
-    }
-
-    /* --- AFFICHAGE & UI --- */
-    function renderPiece(r, col, p) {
-        const cell = document.getElementById(`cell-${r}-${col}`);
+    function drawPiece(r, c, p) {
+        const cell = document.getElementById('grid').children[r * 7 + c];
         const piece = document.createElement('div');
-        piece.className = `piece p${p}`;
+        piece.className = 'piece ' + (p === 1 ? 'p1' : 'p2');
         cell.appendChild(piece);
     }
 
-    function updateStats(score) {
-        let pct = 50 - (score / 20);
-        pct = Math.max(5, Math.min(95, pct));
-        
-        const bar = document.getElementById('win-bar');
-        const text = document.getElementById('win-pct');
-        
-        bar.style.width = pct + '%';
-        text.textContent = Math.round(pct) + '%';
-        
-        if (pct < 20) say(["Tu es fini.", "Regarde cette barre, tu as déjà perdu."]);
-    }
-
-    function updateHistory() {
-        const list = document.getElementById('hist-list');
-        list.innerHTML = moveHistory.slice(-10).reverse()
-            .map(m => `<div class="hist-item">${m}</div>`).join('');
-    }
-
-    function say(list) {
-        const el = document.getElementById('ai-chat');
-        el.textContent = list[Math.floor(Math.random() * list.length)];
-    }
-
-    function endGame(winner) {
-        isGameOver = true;
-        const overlay = document.getElementById('win-overlay');
+    function end(winner) {
+        over = true;
         const msg = document.getElementById('win-msg');
-        overlay.style.display = 'flex';
-        
-        if (winner === 1) {
-            msg.textContent = "Incroyable... Gagné !";
-            msg.style.color = "var(--player)";
-            say(CHAT_MSGS.player_win);
-        } else if (winner === 2) {
-            msg.textContent = "L'IA Domine !";
-            msg.style.color = "var(--bot)";
-            say(CHAT_MSGS.ai_win);
-        } else {
-            msg.textContent = "Match Nul !";
-            msg.style.color = "white";
-        }
+        document.getElementById('win-overlay').style.display = 'flex';
+        if (winner === 0) msg.textContent = "MATCH NUL";
+        else msg.textContent = (winner === 1 ? "INCROYABLE : TU AS GAGNÉ" : "IA DOMINATION");
+        updateStats(winner === 2 ? 10000 : -10000);
     }
 
-    function resetGame() {
-        init();
-    }
+    function resetGame() { init(); }
 
-    // Lancement
     init();
 </script>
 </body>
