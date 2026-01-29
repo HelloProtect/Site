@@ -5,39 +5,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Puissance 4 Imbattable</title>
     <style>
-        body { font-family: sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        #board { display: grid; grid-template-columns: repeat(7, 60px); grid-template-rows: repeat(6, 60px); gap: 8px; background: #1e40af; padding: 15px; border-radius: 15px; }
-        .cell { width: 60px; height: 60px; background: #020617; border-radius: 50%; cursor: pointer; }
-        .player { background: radial-gradient(circle, #f87171, #b91c1c); }
-        .bot { background: radial-gradient(circle, #fde047, #ca8a04); }
-        .controls { margin-bottom: 20px; }
-        /* Barre de probabilité */
-        .win-chance-container { width: 300px; height: 20px; background: #334155; border-radius: 10px; margin: 20px 0; overflow: hidden; border: 2px solid #fff; }
-        #win-bar { width: 50%; height: 100%; background: linear-gradient(90deg, #f87171, #fde047); transition: width 0.5s ease; }
-        #win-text { font-weight: bold; margin-bottom: 5px; }
+        :root { --bg: #0f172a; --board: #1e40af; --cell: #020617; --player: #ef4444; --bot: #fbbf24; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
+        
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { margin: 0; font-size: 2rem; text-transform: uppercase; letter-spacing: 2px; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+
+        .stats-container { width: 350px; margin-bottom: 20px; text-align: center; }
+        .win-chance-text { font-size: 1.1rem; margin-bottom: 10px; font-weight: 600; transition: color 0.3s; }
+        .progress-bg { width: 100%; height: 12px; background: #334155; border-radius: 6px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
+        #win-bar { width: 50%; height: 100%; background: linear-gradient(90deg, var(--player), var(--bot)); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        #board { display: grid; grid-template-columns: repeat(7, 60px); grid-template-rows: repeat(6, 60px); gap: 10px; background: var(--board); padding: 15px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 20px rgba(255,255,255,0.1); border: 4px solid #1d4ed8; }
+        .cell { width: 60px; height: 60px; background: var(--cell); border-radius: 50%; cursor: pointer; position: relative; transition: 0.2s; box-shadow: inset 0 4px 8px rgba(0,0,0,0.5); }
+        .cell:hover { background: #0f172a; transform: scale(1.05); }
+        
+        .player { background: radial-gradient(circle at 35% 35%, #f87171, #b91c1c); box-shadow: 0 0 15px var(--player); }
+        .bot { background: radial-gradient(circle at 35% 35%, #fde047, #ca8a04); box-shadow: 0 0 15px var(--bot); }
+
+        .controls { margin-top: 25px; display: flex; gap: 15px; }
+        select, button { padding: 10px 20px; border-radius: 8px; border: none; background: #334155; color: white; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #475569; }
+        #status { margin-top: 15px; font-style: italic; color: #94a3b8; }
     </style>
 </head>
 <body>
 
-    <h1>Puissance 4 Alpha-Beta</h1>
+    <div class="header">
+        <h1>Puissance 4 Alpha-Beta</h1>
+        <div id="status">Chargement de l'IA...</div>
+    </div>
+
+    <div class="stats-container">
+        <div id="win-text" class="win-chance-text">Probabilité de victoire : 50%</div>
+        <div class="progress-bg"><div id="win-bar"></div></div>
+    </div>
+
+    <div id="board"></div>
 
     <div class="controls">
         <select id="startPlayer" onchange="resetGame()">
-            <option value="1">Tu commences</option>
-            <option value="2">Le Bot commence</option>
+            <option value="1">Joueur commence</option>
+            <option value="2">IA commence</option>
         </select>
-        <button onclick="resetGame()">Reset</button>
+        <button onclick="resetGame()">Réinitialiser</button>
     </div>
-
-    <div id="win-text">Chance de gagner : 50%</div>
-    <div class="win-chance-container"><div id="win-bar"></div></div>
-
-    <div id="board"></div>
-    <div id="status">À ton tour</div>
 
 <script>
     const ROWS = 6, COLS = 7;
-    let board = [], gameOver = false;
+    let board = [], gameOver = false, currentPlayer = 1;
 
     function initBoard() {
         board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
@@ -48,57 +64,52 @@
             const cell = document.createElement("div");
             cell.classList.add("cell");
             cell.dataset.col = i % COLS;
-            cell.onclick = () => { if(currentPlayer === 1) handleMove(parseInt(cell.dataset.col)); };
+            cell.onclick = () => { if(currentPlayer === 1 && !gameOver) handleMove(parseInt(cell.dataset.col)); };
             boardDiv.appendChild(cell);
         }
         currentPlayer = parseInt(document.getElementById("startPlayer").value);
         if (currentPlayer === 2) setTimeout(botMove, 500);
-        updateUI();
+        updateUI(0);
     }
 
     function handleMove(col) {
-        if (gameOver || !dropPiece(col, 1)) return;
-        if (checkWin(board, 1)) return end("Gagné !");
+        if (!dropPiece(col, 1)) return;
+        if (checkWin(board, 1)) return endGame("Vous avez gagné ! (Impossible)");
         currentPlayer = 2;
-        updateUI();
-        setTimeout(botMove, 300);
+        document.getElementById("status").textContent = "L'IA calcule...";
+        setTimeout(botMove, 400);
     }
 
     function botMove() {
-        if (gameOver) return;
         let col = findBestMove();
         dropPiece(col, 2);
-        if (checkWin(board, 2)) return end("Le Bot est imbattable !");
-        if (board[0].every(c => c !== 0)) return end("Match nul");
+        if (checkWin(board, 2)) return endGame("L'IA a gagné.");
+        if (board[0].every(c => c !== 0)) return endGame("Match nul.");
         currentPlayer = 1;
-        updateUI();
-    }
-
-    function dropPiece(col, p) {
-        for (let r = ROWS - 1; r >= 0; r--) {
-            if (board[r][col] === 0) { board[r][col] = p; render(); return true; }
-        }
-        return false;
+        document.getElementById("status").textContent = "À vous de jouer";
     }
 
     function findBestMove() {
         let bestScore = -Infinity, bestCol = 3;
-        for (let c of [3,2,4,1,5,0,6]) {
+        const order = [3, 2, 4, 1, 5, 0, 6];
+        for (let c of order) {
             let r = getRow(board, c);
             if (r !== -1) {
                 board[r][c] = 2;
-                let score = minimax(board, 8, false, -Infinity, Infinity);
+                let score = minimax(board, 7, false, -Infinity, Infinity);
                 board[r][c] = 0;
                 if (score > bestScore) { bestScore = score; bestCol = c; }
             }
         }
+        updateUI(bestScore);
         return bestCol;
     }
 
     function minimax(node, depth, isMax, alpha, beta) {
-        if (checkWin(node, 2)) return 100000;
-        if (checkWin(node, 1)) return -100000;
-        if (depth === 0) return evaluate(node);
+        let win2 = checkWin(node, 2), win1 = checkWin(node, 1);
+        if (win2) return 1000 + depth;
+        if (win1) return -1000 - depth;
+        if (depth === 0) return evaluatePos(node);
 
         if (isMax) {
             let v = -Infinity;
@@ -129,20 +140,44 @@
         }
     }
 
-    function evaluate(b) {
+    function evaluatePos(b) {
         let score = 0;
-        // Priorité énorme au centre
-        for(let r=0; r<6; r++) if(b[r][3]===2) score += 10;
+        const centerCol = b.map(r => r[3]);
+        score += centerCol.filter(v => v === 2).length * 3;
+        score -= centerCol.filter(v => v === 1).length * 3;
         return score;
     }
 
-    function updateUI() {
-        let score = minimax(board, 4, false, -Infinity, Infinity);
-        // Conversion score en % (approximatif)
-        let chance = Math.max(5, Math.min(95, 50 - (score / 100)));
+    function updateUI(score) {
+        // Logique de pourcentage réelle basée sur le score Minimax
+        let base = 50;
+        let shift = score * 5; 
+        let chance = Math.max(0, Math.min(100, base - (shift / 10)));
+        
+        // Si l'IA voit une victoire forcée
+        if (score > 500) chance = 5; 
+        if (score < -500) chance = 95;
+
         document.getElementById("win-bar").style.width = chance + "%";
-        document.getElementById("win-text").textContent = `Ta chance de gagner : ${Math.round(chance)}%`;
+        document.getElementById("win-text").textContent = `Chance de victoire : ${Math.round(chance)}%`;
+        document.getElementById("win-text").style.color = chance < 30 ? "#ef4444" : "#fff";
         render();
+    }
+
+    function dropPiece(col, p) {
+        let r = getRow(board, col);
+        if (r === -1) return false;
+        board[r][col] = p;
+        return true;
+    }
+
+    function getRow(b, c) { for (let r = 5; r >= 0; r--) if (b[r][c] === 0) return r; return -1; }
+
+    function render() {
+        const cells = document.querySelectorAll(".cell");
+        board.flat().forEach((v, i) => {
+            cells[i].className = "cell" + (v === 1 ? " player" : v === 2 ? " bot" : "");
+        });
     }
 
     function checkWin(b, p) {
@@ -153,12 +188,7 @@
         return false;
     }
 
-    function getRow(b, c) { for (let r = 5; r >= 0; r--) if (b[r][c] === 0) return r; return -1; }
-    function render() {
-        const cells = document.querySelectorAll(".cell");
-        board.flat().forEach((v, i) => { cells[i].className = "cell" + (v===1?" player":v===2?" bot":""); });
-    }
-    function end(m) { document.getElementById("status").textContent = m; gameOver = true; }
+    function endGame(m) { document.getElementById("status").textContent = m; gameOver = true; render(); }
     function resetGame() { initBoard(); }
 
     initBoard();
