@@ -3,74 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Puissance 4 Pro</title>
+    <title>Puissance 4 Imbattable</title>
     <style>
-        body {
-            font-family: "Segoe UI", Arial, sans-serif;
-            background: radial-gradient(circle at top, #1e293b, #020617);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-
-        .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
-
-        select, button {
-            padding: 10px 20px;
-            border-radius: 999px;
-            border: none;
-            background: #2563eb;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        #board {
-            display: grid;
-            grid-template-columns: repeat(7, 70px);
-            grid-template-rows: repeat(6, 70px);
-            gap: 8px;
-            background: #1e40af;
-            padding: 15px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        .cell {
-            width: 70px;
-            height: 70px;
-            background: #020617;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
+        body { font-family: sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        #board { display: grid; grid-template-columns: repeat(7, 60px); grid-template-rows: repeat(6, 60px); gap: 8px; background: #1e40af; padding: 15px; border-radius: 15px; }
+        .cell { width: 60px; height: 60px; background: #020617; border-radius: 50%; cursor: pointer; }
         .player { background: radial-gradient(circle, #f87171, #b91c1c); }
         .bot { background: radial-gradient(circle, #fde047, #ca8a04); }
-
-        #status { margin-top: 20px; font-size: 1.5rem; font-weight: bold; }
-        
-        @media (max-width: 550px) {
-            #board { grid-template-columns: repeat(7, 45px); grid-template-rows: repeat(6, 45px); }
-            .cell { width: 45px; height: 45px; }
-        }
+        .controls { margin-bottom: 20px; }
+        /* Barre de probabilité */
+        .win-chance-container { width: 300px; height: 20px; background: #334155; border-radius: 10px; margin: 20px 0; overflow: hidden; border: 2px solid #fff; }
+        #win-bar { width: 50%; height: 100%; background: linear-gradient(90deg, #f87171, #fde047); transition: width 0.5s ease; }
+        #win-text { font-weight: bold; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
-    <h1>Puissance 4 vs Bot</h1>
+    <h1>Puissance 4 Alpha-Beta</h1>
 
     <div class="controls">
-        <select id="startPlayer">
-            <option value="1">Joueur commence</option>
-            <option value="2">IA commence</option>
+        <select id="startPlayer" onchange="resetGame()">
+            <option value="1">Tu commences</option>
+            <option value="2">Le Bot commence</option>
         </select>
-        <button onclick="resetGame()">Nouveau Match</button>
+        <button onclick="resetGame()">Reset</button>
     </div>
+
+    <div id="win-text">Chance de gagner : 50%</div>
+    <div class="win-chance-container"><div id="win-bar"></div></div>
 
     <div id="board"></div>
     <div id="status">À ton tour</div>
@@ -84,42 +44,34 @@
         gameOver = false;
         const boardDiv = document.getElementById("board");
         boardDiv.innerHTML = "";
-        
         for (let i = 0; i < ROWS * COLS; i++) {
             const cell = document.createElement("div");
             cell.classList.add("cell");
             cell.dataset.col = i % COLS;
-            cell.addEventListener("click", () => handleMove(parseInt(cell.dataset.col)));
+            cell.onclick = () => { if(currentPlayer === 1) handleMove(parseInt(cell.dataset.col)); };
             boardDiv.appendChild(cell);
         }
-
-        const firstMove = document.getElementById("startPlayer").value;
-        if (firstMove == "2") {
-            document.getElementById("status").textContent = "L'IA réfléchit...";
-            setTimeout(botMove, 500);
-        } else {
-            document.getElementById("status").textContent = "À ton tour";
-        }
-        render();
+        currentPlayer = parseInt(document.getElementById("startPlayer").value);
+        if (currentPlayer === 2) setTimeout(botMove, 500);
+        updateUI();
     }
 
     function handleMove(col) {
         if (gameOver || !dropPiece(col, 1)) return;
-        if (checkWin(1)) return end("🎉 Gagné !");
-        if (isFull()) return end("Match nul");
-        
-        document.getElementById("status").textContent = "L'IA réfléchit...";
-        setTimeout(botMove, 400);
+        if (checkWin(board, 1)) return end("Gagné !");
+        currentPlayer = 2;
+        updateUI();
+        setTimeout(botMove, 300);
     }
 
     function botMove() {
         if (gameOver) return;
         let col = findBestMove();
         dropPiece(col, 2);
-        if (checkWin(2)) return end("🤖 Le bot a gagné");
-        if (isFull()) return end("Match nul");
-        document.getElementById("status").textContent = "À ton tour";
-        render();
+        if (checkWin(board, 2)) return end("Le Bot est imbattable !");
+        if (board[0].every(c => c !== 0)) return end("Match nul");
+        currentPlayer = 1;
+        updateUI();
     }
 
     function dropPiece(col, p) {
@@ -131,13 +83,11 @@
 
     function findBestMove() {
         let bestScore = -Infinity, bestCol = 3;
-        const order = [3, 2, 4, 1, 5, 0, 6]; // Stratégie centrale
-
-        for (let c of order) {
-            let r = getRow(c);
+        for (let c of [3,2,4,1,5,0,6]) {
+            let r = getRow(board, c);
             if (r !== -1) {
                 board[r][c] = 2;
-                let score = minimax(0, false, -Infinity, Infinity);
+                let score = minimax(board, 8, false, -Infinity, Infinity);
                 board[r][c] = 0;
                 if (score > bestScore) { bestScore = score; bestCol = c; }
             }
@@ -145,66 +95,70 @@
         return bestCol;
     }
 
-    function minimax(depth, isMax, alpha, beta) {
-        if (checkWin(2)) return 1000 - depth;
-        if (checkWin(1)) return depth - 1000;
-        if (depth >= 6 || isFull()) return evaluate();
+    function minimax(node, depth, isMax, alpha, beta) {
+        if (checkWin(node, 2)) return 100000;
+        if (checkWin(node, 1)) return -100000;
+        if (depth === 0) return evaluate(node);
 
-        let scores = isMax ? -Infinity : Infinity;
-        for (let c = 0; c < COLS; c++) {
-            let r = getRow(c);
-            if (r !== -1) {
-                board[r][c] = isMax ? 2 : 1;
-                let val = minimax(depth + 1, !isMax, alpha, beta);
-                board[r][c] = 0;
-                if (isMax) { scores = Math.max(scores, val); alpha = Math.max(alpha, val); }
-                else { scores = Math.min(scores, val); beta = Math.min(beta, val); }
-                if (beta <= alpha) break;
+        if (isMax) {
+            let v = -Infinity;
+            for (let c = 0; c < COLS; c++) {
+                let r = getRow(node, c);
+                if (r !== -1) {
+                    node[r][c] = 2;
+                    v = Math.max(v, minimax(node, depth - 1, false, alpha, beta));
+                    node[r][c] = 0;
+                    alpha = Math.max(alpha, v);
+                    if (beta <= alpha) break;
+                }
             }
+            return v;
+        } else {
+            let v = Infinity;
+            for (let c = 0; c < COLS; c++) {
+                let r = getRow(node, c);
+                if (r !== -1) {
+                    node[r][c] = 1;
+                    v = Math.min(v, minimax(node, depth - 1, true, alpha, beta));
+                    node[r][c] = 0;
+                    beta = Math.min(beta, v);
+                    if (beta <= alpha) break;
+                }
+            }
+            return v;
         }
-        return scores;
     }
 
-    function evaluate() {
+    function evaluate(b) {
         let score = 0;
-        for (let r = 0; r < ROWS; r++) if (board[r][3] === 2) score += 3; // Bonus centre
+        // Priorité énorme au centre
+        for(let r=0; r<6; r++) if(b[r][3]===2) score += 10;
         return score;
     }
 
-    function checkWin(p) {
-        for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < COLS; c++) {
-                if (checkDir(r, c, 0, 1, p) || checkDir(r, c, 1, 0, p) || 
-                    checkDir(r, c, 1, 1, p) || checkDir(r, c, 1, -1, p)) return true;
-            }
-        }
+    function updateUI() {
+        let score = minimax(board, 4, false, -Infinity, Infinity);
+        // Conversion score en % (approximatif)
+        let chance = Math.max(5, Math.min(95, 50 - (score / 100)));
+        document.getElementById("win-bar").style.width = chance + "%";
+        document.getElementById("win-text").textContent = `Ta chance de gagner : ${Math.round(chance)}%`;
+        render();
+    }
+
+    function checkWin(b, p) {
+        for (let r=0; r<6; r++) for (let c=0; c<4; c++) if (b[r][c]===p && b[r][c+1]===p && b[r][c+2]===p && b[r][c+3]===p) return true;
+        for (let r=0; r<3; r++) for (let c=0; c<7; c++) if (b[r][c]===p && b[r+1][c]===p && b[r+2][c]===p && b[r+3][c]===p) return true;
+        for (let r=0; r<3; r++) for (let c=0; c<4; c++) if (b[r][c]===p && b[r+1][c+1]===p && b[r+2][c+2]===p && b[r+3][c+3]===p) return true;
+        for (let r=3; r<6; r++) for (let c=0; c<4; c++) if (b[r][c]===p && b[r-1][c+1]===p && b[r-2][c+2]===p && b[r-3][c+3]===p) return true;
         return false;
     }
 
-    function checkDir(r, c, dr, dc, p) {
-        let count = 0;
-        for (let i = 0; i < 4; i++) {
-            let nr = r + dr * i, nc = c + dc * i;
-            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && board[nr][nc] === p) count++;
-            else break;
-        }
-        return count === 4;
-    }
-
-    function getRow(c) {
-        for (let r = ROWS - 1; r >= 0; r--) if (board[r][c] === 0) return r;
-        return -1;
-    }
-
+    function getRow(b, c) { for (let r = 5; r >= 0; r--) if (b[r][c] === 0) return r; return -1; }
     function render() {
         const cells = document.querySelectorAll(".cell");
-        board.flat().forEach((val, i) => {
-            cells[i].className = "cell" + (val === 1 ? " player" : val === 2 ? " bot" : "");
-        });
+        board.flat().forEach((v, i) => { cells[i].className = "cell" + (v===1?" player":v===2?" bot":""); });
     }
-
-    function isFull() { return board[0].every(c => c !== 0); }
-    function end(msg) { document.getElementById("status").textContent = msg; gameOver = true; render(); }
+    function end(m) { document.getElementById("status").textContent = m; gameOver = true; }
     function resetGame() { initBoard(); }
 
     initBoard();
