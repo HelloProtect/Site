@@ -3,42 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trans-Fi | Neural Link</title>
+    <title>Trans-Fi | Force Download</title>
     <style>
         :root { --glow: #00ff41; --bg: #0a0a0a; }
         body { background: var(--bg); color: var(--glow); font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .box { border: 2px solid var(--glow); padding: 30px; width: 420px; background: #141414; text-align: center; box-shadow: 0 0 20px rgba(0,255,65,0.2); border-radius: 8px; }
-        input, button, select { width: 100%; margin: 10px 0; padding: 12px; background: #000; border: 1px solid var(--glow); color: var(--glow); border-radius: 4px; }
+        .box { border: 2px solid var(--glow); padding: 30px; width: 420px; background: #141414; text-align: center; border-radius: 8px; }
+        input, button, select { width: 100%; margin: 10px 0; padding: 12px; background: #000; border: 1px solid var(--glow); color: var(--glow); }
         button { cursor: pointer; background: var(--glow); color: #000; font-weight: bold; border: none; }
         #res { font-size: 10px; word-break: break-all; margin-top: 15px; cursor: pointer; color: #0af; border: 1px dashed #0af; padding: 10px; }
-        .prompt-box { margin-top: 20px; padding: 15px; background: #000; border: 1px solid #333; font-size: 11px; text-align: left; position: relative; }
-        .prompt-box b { color: #0af; display: block; margin-bottom: 5px; }
         .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="box">
         <div id="create">
-            <h3>>> NEURAL TRANS-FI</h3>
+            <h3>>> ENVOYER DATA</h3>
             <select id="type" onchange="document.getElementById('in').type=(this.value==='f')?'file':'text'">
-                <option value="f">Fichier (Auto-Download)</option>
+                <option value="f">Fichier (Download)</option>
                 <option value="m">Message / URL</option>
             </select>
             <input type="file" id="in">
             <button onclick="share()">GÉNÉRER LE LIEN</button>
             <div id="res" onclick="copy(this.innerText)"></div>
-
-            <div class="prompt-box">
-                <b>PROMPT POUR IA :</b>
-                <span id="ptext">Agis comme un encodeur de fichiers. Crée un lien de téléchargement direct. 1. Convertis mon fichier/texte en Data-URI (base64). 2. Crée un objet JSON : {"t":"f", "c":"TON_DATA_URI"}. 3. Encode ce JSON en Base64. 4. Ajoute-le après : https://helloprotect.github.io/Site/Trans-fi/index.html# . Fournis le lien brut ET le lien cliquable.</span>
-                <button style="width:auto; padding:5px 10px; font-size:9px; margin-top:10px;" onclick="copy(document.getElementById('ptext').innerText)">COPIER LE PROMPT</button>
-            </div>
         </div>
 
         <div id="view" class="hidden">
-            <h3>>> SYSTEM RECEPTION</h3>
-            <div id="status">INITIALISATION...</div>
-            <button onclick="location.href=location.pathname" style="margin-top:20px">NOUVEAU TRANSFERT</button>
+            <h3>>> RÉCEPTION</h3>
+            <div id="status">PRÉPARATION DU TÉLÉCHARGEMENT...</div>
+            <button onclick="location.href=location.pathname" style="margin-top:20px">RETOUR</button>
         </div>
     </div>
 
@@ -52,19 +44,21 @@
             try {
                 const d = JSON.parse(decodeURIComponent(escape(atob(h))));
                 if(d.t === 'f') {
-                    const a = document.createElement('a');
-                    a.href = d.c;
-                    a.download = "trans-fi_data";
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    document.getElementById('status').innerText = "TÉLÉCHARGEMENT LANCÉ !";
-                } else if(d.c.startsWith('http')) {
-                    location.href = d.c;
+                    // Conversion Data-URI en BLOB pour contourner les blocages navigateurs
+                    fetch(d.c).then(res => res.blob()).then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = "trans-fi_file";
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.getElementById('status').innerText = "TÉLÉCHARGEMENT RÉUSSI !";
+                    }).catch(() => { document.getElementById('status').innerText = "ERREUR : Fichier trop volumineux."; });
                 } else {
                     document.getElementById('status').innerText = "MESSAGE : " + d.c;
                 }
-            } catch(e) { document.getElementById('status').innerText = "ERREUR DE SYNTAXE DATA"; }
+            } catch(e) { document.getElementById('status').innerText = "ERREUR DE LIEN"; }
         }
 
         async function share() {
@@ -73,18 +67,14 @@
             if(type === 'f') {
                 const file = document.getElementById('in').files[0];
                 if(!file) return alert("AUCUN FICHIER");
+                if(file.size > 1500000) return alert("Fichier trop gros (>1.5Mo)"); 
                 val = await new Promise(r => { const rd = new FileReader(); rd.onload=()=>r(rd.result); rd.readAsDataURL(file); });
-            } else {
-                val = document.getElementById('in').value;
-            }
+            } else { val = document.getElementById('in').value; }
             const hash = btoa(unescape(encodeURIComponent(JSON.stringify({t:type, c:val}))));
             document.getElementById('res').innerText = BASE + "#" + hash;
         }
 
-        function copy(t) {
-            navigator.clipboard.writeText(t);
-            alert("SYSTÈME COPIÉ");
-        }
+        function copy(t) { navigator.clipboard.writeText(t); alert("COPIÉ"); }
     </script>
 </body>
 </html>
