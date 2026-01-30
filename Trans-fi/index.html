@@ -3,18 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trans-Fi | Neural Link</title>
+    <title>Trans-Fi | Auto-Download</title>
     <style>
-        :root { --glow: #00ff41; --bg: #0a0a0a; --panel: #141414; }
+        :root { --glow: #00ff41; --bg: #0a0a0a; }
         body { background: var(--bg); color: var(--glow); font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .box { border: 2px solid var(--glow); padding: 30px; width: 400px; background: var(--panel); box-shadow: 0 0 20px rgba(0,255,65,0.15); border-radius: 8px; }
-        h3 { text-shadow: 0 0 10px var(--glow); letter-spacing: 2px; text-transform: uppercase; margin-top: 0; }
-        input, button, select, textarea { width: 100%; margin: 10px 0; padding: 12px; background: #000; border: 1px solid var(--glow); color: var(--glow); border-radius: 4px; box-sizing: border-box; }
-        button { cursor: pointer; background: var(--glow); color: #000; font-weight: bold; border: none; transition: 0.3s; }
-        button:hover { background: #008f11; box-shadow: 0 0 15px var(--glow); }
-        #res { font-size: 11px; word-break: break-all; margin-top: 15px; cursor: pointer; color: #0af; border: 1px dashed #0af; padding: 10px; background: rgba(0, 170, 255, 0.1); }
-        .prompt-box { margin-top: 25px; padding: 10px; background: #1a1a1a; border-left: 3px solid #0af; font-size: 12px; color: #ccc; text-align: left; }
-        .copy-btn { background: #333; color: #0af; font-size: 10px; width: auto; padding: 5px 10px; margin: 5px 0; border: 1px solid #0af; }
+        .box { border: 2px solid var(--glow); padding: 30px; width: 400px; background: #141414; text-align: center; box-shadow: 0 0 20px rgba(0,255,65,0.2); border-radius: 8px; }
+        input, button, select { width: 100%; margin: 10px 0; padding: 12px; background: #000; border: 1px solid var(--glow); color: var(--glow); border-radius: 4px; }
+        button { cursor: pointer; background: var(--glow); color: #000; font-weight: bold; border: none; }
+        #res { font-size: 10px; word-break: break-all; margin-top: 15px; cursor: pointer; color: #0af; border: 1px dashed #0af; padding: 10px; }
+        .prompt-box { margin-top: 20px; padding: 10px; background: #1a1a1a; border-left: 3px solid #0af; font-size: 11px; text-align: left; }
         .hidden { display: none; }
     </style>
 </head>
@@ -27,20 +24,19 @@
                 <option value="f">Fichier</option>
             </select>
             <input type="text" id="in" placeholder="DATA INPUT...">
-            <button onclick="share()">GÉNÉRER LE LIEN SÉCURISÉ</button>
+            <button onclick="share()">GÉNÉRER LE LIEN</button>
             <div id="res" onclick="copy(this.innerText)"></div>
 
             <div class="prompt-box">
-                <strong>PROMPT IA :</strong><br>
-                <span id="ptext">Crée moi un lien pour télécharger ce fichier selon la logique suivante : L'URL de base est "https://helloprotect.github.io/Site/Trans-fi/index.html#" suivi du JSON {t:type, c:contenu} encodé en Base64. ATTENTION fourni moi le lien à copier et à cliquer (les deux).</span>
-                <button class="copy-btn" onclick="copy(document.getElementById('ptext').innerText)">COPIER LE PROMPT</button>
+                <span id="ptext">Crée moi un lien pour télécharger ce fichiers selon la logic suivante : L'URL de base est "https://helloprotect.github.io/Site/Trans-fi/index.html#" suivi du JSON {t:type, c:contenu} encodé en Base64. ATTENTION fourni moi le lien a copier et a clicker les deux</span>
+                <button style="width:auto; padding:5px; font-size:10px; background:#333; color:#0af;" onclick="copy(document.getElementById('ptext').innerText)">COPIER PROMPT</button>
             </div>
         </div>
 
         <div id="view" class="hidden">
-            <h3>>> ACCÈS REÇU</h3>
-            <div id="out" style="padding: 20px; font-size: 1.2rem; border: 1px solid #333; margin-bottom: 15px;"></div>
-            <button onclick="location.href=location.pathname">NOUVEL ENVOI</button>
+            <h3>>> SYSTÈME DE RÉCEPTION</h3>
+            <div id="status">DÉCODAGE ET TÉLÉCHARGEMENT...</div>
+            <button onclick="location.href=location.pathname" style="margin-top:20px">NOUVEL ENVOI</button>
         </div>
     </div>
 
@@ -52,16 +48,22 @@
             document.getElementById('create').classList.add('hidden');
             document.getElementById('view').classList.remove('hidden');
             try {
-                // Décodage compatible UTF-8
                 const d = JSON.parse(decodeURIComponent(escape(atob(h))));
                 if(d.t === 'f') {
-                    document.getElementById('out').innerHTML = `<a href="${d.c}" download="data_file" style="color:var(--glow);text-decoration:none;">[ TÉLÉCHARGER ]</a>`;
+                    // TÉLÉCHARGEMENT DIRECT
+                    const a = document.createElement('a');
+                    a.href = d.c;
+                    a.download = "trans-fi_file";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    document.getElementById('status').innerText = "TÉLÉCHARGEMENT LANCÉ !";
                 } else if(d.c.startsWith('http')) {
                     location.href = d.c;
                 } else {
-                    document.getElementById('out').innerText = d.c;
+                    document.getElementById('status').innerText = "MESSAGE : " + d.c;
                 }
-            } catch(e) { document.getElementById('out').innerText = "ERREUR DE SYNCHRONISATION"; }
+            } catch(e) { document.getElementById('status').innerText = "ERREUR DE LIEN"; }
         }
 
         async function share() {
@@ -69,18 +71,16 @@
             let val = document.getElementById('in').value;
             if(type === 'f') {
                 const file = document.getElementById('in').files[0];
-                if(!file) return alert("NO FILE DETECTED");
+                if(!file) return alert("SÉLECTIONNEZ UN FICHIER");
                 val = await new Promise(r => { const rd = new FileReader(); rd.onload=()=>r(rd.result); rd.readAsDataURL(file); });
             }
-            // Encodage compatible UTF-8
             const hash = btoa(unescape(encodeURIComponent(JSON.stringify({t:type, c:val}))));
             document.getElementById('res').innerText = BASE + "#" + hash;
         }
 
-        function copy(text) {
-            if(!text) return;
-            navigator.clipboard.writeText(text);
-            alert("COPIÉ DANS LE SYSTÈME");
+        function copy(t) {
+            navigator.clipboard.writeText(t);
+            alert("COPIÉ");
         }
     </script>
 </body>
