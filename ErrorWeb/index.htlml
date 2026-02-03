@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Erreur - Redirection</title>
+</head>
+<body>
+    <h1>Lien erroné</h1>
+    <p>Voulez-vous essayer de rejoindre la destination externe ?</p>
+    
+    <button onclick="redirect()">Réessayer</button>
+
+    <script>
+        function redirect() {
+            // Récupère la partie après le #
+            const target = window.location.hash.substring(1);
+            
+            if (target) {
+                // Ajoute http:// si absent pour éviter une redirection relative
+                const url = target.startsWith('http') ? target : 'https://' + target;
+                window.location.href = url;
+            } else {
+                alert("Aucune destination trouvée dans l'URL.");
+            }
+        }
+    </script>
+</body>
+</html>
