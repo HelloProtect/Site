@@ -3,20 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Le Monde du Caca 💩</title>
+<title>Ordre Sacré du 💩</title>
 
 <style>
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #8B4513, #D2B48C);
-    color: white;
+    font-family: Georgia, serif;
+    background: radial-gradient(circle, #5a3825, #2b1a12);
+    color: #f5e6d3;
     text-align: center;
 }
 
 header {
-    padding: 40px;
-    background: rgba(0,0,0,0.4);
+    padding: 50px 20px;
+}
+
+h1 {
+    font-size: 3em;
 }
 
 section {
@@ -24,32 +27,33 @@ section {
 }
 
 .card {
-    background: rgba(0,0,0,0.5);
+    background: rgba(255,255,255,0.08);
     margin: 20px auto;
-    padding: 20px;
+    padding: 25px;
     border-radius: 15px;
     max-width: 600px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.4);
 }
 
 button {
-    padding: 10px 20px;
+    padding: 12px 25px;
+    border-radius: 25px;
     border: none;
-    border-radius: 10px;
-    background: #fff;
-    color: #8B4513;
+    background: #f5e6d3;
+    color: #5a3825;
     font-weight: bold;
     cursor: pointer;
     transition: 0.3s;
 }
 
 button:hover {
-    background: #f5f5f5;
     transform: scale(1.05);
 }
 
 footer {
     padding: 20px;
-    background: rgba(0,0,0,0.4);
+    font-size: 0.9em;
+    opacity: 0.8;
 }
 </style>
 </head>
@@ -57,55 +61,54 @@ footer {
 <body>
 
 <header>
-    <h1>Bienvenue dans le Monde du Caca 💩</h1>
-    <p>Oui, on parle bien de ça. Et c’est scientifique !</p>
+    <h1>Ordre Sacré du 💩</h1>
+    <p>Nous honorons le cycle éternel de la digestion.</p>
 </header>
 
 <section>
-    <div class="card">
-        <h2>🧠 C’est quoi le caca ?</h2>
-        <p>
-            Le caca est le résultat final de la digestion.  
-            Ton corps prend les nutriments dont il a besoin,  
-            et élimine le reste.
-        </p>
-    </div>
 
-    <div class="card">
-        <h2>🌈 Les différentes couleurs</h2>
-        <p>
-            Marron : Normal ✔  
-            Vert : Trop de légumes 🥦  
-            Jaune : Digestion rapide  
-            Noir/Rouge : Consulte un médecin ⚠
-        </p>
-    </div>
+<div class="card">
+    <h2>🌍 Notre Philosophie</h2>
+    <p>
+        Tout ce qui entre ressort.  
+        Le caca symbolise la transformation, le renouveau et le recyclage naturel.  
+        Rien ne se perd, tout se transforme.
+    </p>
+</div>
 
-    <div class="card">
-        <h2>🎉 Fait amusant</h2>
-        <p id="funFact">
-            Clique sur le bouton pour un fait amusant !
-        </p>
-        <button onclick="newFact()">Nouveau fait</button>
-    </div>
+<div class="card">
+    <h2>📜 Les 3 Principes</h2>
+    <p>
+        1. Respecte ton système digestif.  
+        2. Mange équilibré.  
+        3. N’oublie jamais le pouvoir du compost.
+    </p>
+</div>
+
+<div class="card">
+    <h2>🔮 Message Sacré</h2>
+    <p id="oracle">Clique pour recevoir la sagesse digestive.</p>
+    <button onclick="oracle()">Recevoir la sagesse</button>
+</div>
+
 </section>
 
 <footer>
-    <p>Site éducatif 💩 - La digestion c’est important !</p>
+    <p>Site parodique – Vive le cycle naturel 💩</p>
 </footer>
 
 <script>
-const facts = [
-    "Un humain fait en moyenne 100 à 200 grammes par jour.",
-    "Les astronautes font aussi caca dans l’espace 🚀.",
-    "Les excréments sont utilisés comme engrais depuis des siècles.",
-    "Le mot scientifique est 'selles'.",
-    "Les bactéries représentent une grande partie du caca."
+const messages = [
+    "Hydrate-toi, ton intestin te remercie.",
+    "Le transit est une voie vers la paix intérieure.",
+    "Fibres et équilibre mènent à l’harmonie.",
+    "Chaque fin est un nouveau départ.",
+    "Honore ton microbiote."
 ];
 
-function newFact() {
-    const random = Math.floor(Math.random() * facts.length);
-    document.getElementById("funFact").innerText = facts[random];
+function oracle() {
+    const random = Math.floor(Math.random() * messages.length);
+    document.getElementById("oracle").innerText = messages[random];
 }
 </script>
 
