@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chrome Dino</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #111;
+      color: #f2f2f2;
+    }
+
+    .game-wrap {
+      width: min(900px, 95vw);
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    p {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      color: #cfcfcf;
+    }
+
+    canvas {
+      width: 100%;
+      max-width: 900px;
+      height: auto;
+      border: 2px solid #444;
+      border-radius: 8px;
+      background: #1b1b1b;
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <main class="game-wrap">
+    <h1>Chrome Dino 🦖</h1>
+    <p>Appuie sur <strong>Espace</strong> ou <strong>↑</strong> pour sauter • <strong>R</strong> pour recommencer</p>
+    <canvas id="game" width="900" height="250" aria-label="Jeu Chrome Dino"></canvas>
+  </main>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const groundY = 200;
+    const gravity = 0.75;
+    const jumpForce = -13;
+
+    const dino = {
+      x: 70,
+      y: groundY - 45,
+      width: 40,
+      height: 45,
+      velocityY: 0,
+      onGround: true
+    };
+
+    let obstacles = [];
+    let spawnTimer = 0;
+    let speed = 6;
+    let score = 0;
+    let bestScore = Number(localStorage.getItem('dino-best-score') || 0);
+    let gameOver = false;
+
+    function resetGame() {
+      obstacles = [];
+      spawnTimer = 0;
+      speed = 6;
+      score = 0;
+      gameOver = false;
+      dino.y = groundY - dino.height;
+      dino.velocityY = 0;
+      dino.onGround = true;
+    }
+
+    function jump() {
+      if (!dino.onGround || gameOver) {
+        return;
+      }
+      dino.velocityY = jumpForce;
+      dino.onGround = false;
+    }
+
+    function createObstacle() {
+      const tall = Math.random() > 0.5;
+      const width = tall ? 24 : 38;
+      const height = tall ? 50 : 28;
+      obstacles.push({
+        x: canvas.width + 10,
+        y: groundY - height,
+        width,
+        height
+      });
+    }
+
+    function update() {
+      if (gameOver) {
+        return;
+      }
+
+      spawnTimer -= 1;
+      if (spawnTimer <= 0) {
+        createObstacle();
+        spawnTimer = 60 + Math.floor(Math.random() * 70);
+      }
+
+      dino.velocityY += gravity;
+      dino.y += dino.velocityY;
+
+      if (dino.y >= groundY - dino.height) {
+        dino.y = groundY - dino.height;
+        dino.velocityY = 0;
+        dino.onGround = true;
+      }
+
+      obstacles.forEach((obs) => {
+        obs.x -= speed;
+      });
+
+      obstacles = obstacles.filter((obs) => obs.x + obs.width > -20);
+
+      speed += 0.002;
+      score += 0.1;
+
+      const dinoHitbox = {
+        x: dino.x + 5,
+        y: dino.y + 5,
+        width: dino.width - 10,
+        height: dino.height - 5
+      };
+
+      for (const obs of obstacles) {
+        if (
+          dinoHitbox.x < obs.x + obs.width &&
+          dinoHitbox.x + dinoHitbox.width > obs.x &&
+          dinoHitbox.y < obs.y + obs.height &&
+          dinoHitbox.y + dinoHitbox.height > obs.y
+        ) {
+          gameOver = true;
+          bestScore = Math.max(bestScore, Math.floor(score));
+          localStorage.setItem('dino-best-score', String(bestScore));
+          break;
+        }
+      }
+    }
+
+    function drawDino() {
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+      // oeil
+      ctx.fillStyle = '#111';
+      ctx.fillRect(dino.x + 26, dino.y + 10, 5, 5);
+      // patte
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(dino.x + 7, dino.y + dino.height, 8, 8);
+      ctx.fillRect(dino.x + 24, dino.y + dino.height, 8, 8);
+    }
+
+    function drawObstacle(obs) {
+      ctx.fillStyle = '#7ed957';
+      ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+      if (obs.height > 40) {
+        ctx.fillRect(obs.x - 6, obs.y + 12, 6, 9);
+        ctx.fillRect(obs.x + obs.width, obs.y + 18, 6, 9);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // sol
+      ctx.strokeStyle = '#696969';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, groundY + 2);
+      ctx.lineTo(canvas.width, groundY + 2);
+      ctx.stroke();
+
+      // décor rapide
+      ctx.fillStyle = '#2c2c2c';
+      for (let i = 0; i < 20; i += 1) {
+        ctx.fillRect((i * 70 + (Date.now() / 10) % 70) % canvas.width, groundY + 16, 20, 3);
+      }
+
+      drawDino();
+      obstacles.forEach(drawObstacle);
+
+      ctx.fillStyle = '#f5f5f5';
+      ctx.font = '20px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Score: ${Math.floor(score)}`, 15, 30);
+      ctx.fillText(`Record: ${bestScore}`, 15, 55);
+
+      if (gameOver) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 40px Arial';
+        ctx.fillText('Game Over', canvas.width / 2, 95);
+        ctx.font = '22px Arial';
+        ctx.fillText('Appuie sur R pour rejouer', canvas.width / 2, 135);
+        ctx.font = '18px Arial';
+        ctx.fillText(`Score final: ${Math.floor(score)}`, canvas.width / 2, 170);
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('keydown', (event) => {
+      if (event.code === 'Space' || event.code === 'ArrowUp') {
+        event.preventDefault();
+        jump();
+      }
+      if (event.code === 'KeyR' && gameOver) {
+        resetGame();
+      }
+    });
+
+    resetGame();
+    loop();
+  </script>
+</body>
+</html>
