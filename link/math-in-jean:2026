@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Redirection...</title>
+
+  <script>
+    const REDIRECT_URL = "https://example.com";
+
+    // Meta refresh dynamique
+    const meta = document.createElement('meta');
+    meta.httpEquiv = "refresh";
+    meta.content = "1; url=" + REDIRECT_URL;
+    document.head.appendChild(meta);
+
+    // Redirection JS
+    setTimeout(function() {
+      window.location.href = REDIRECT_URL;
+    }, 1000);
+  </script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f5f5f5;
+    }
+    .container {
+      text-align: center;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Redirection en cours...</h1>
+    <p>Si rien ne se passe, <a id="link" href="#">clique ici</a>.</p>
+  </div>
+
+  <script>
+    document.getElementById("link").href = REDIRECT_URL;
+  </script>
+</body>
+</html>
