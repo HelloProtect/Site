@@ -1,45 +1,47 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Accès Sécurisé</title>
+    <title>Sytème Verrouillé</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
-<body style="background:#1a1a1a; color:#00ff00; font-family: monospace; padding: 20px;">
-    <div id="app">
-        <h2>Fichier : <span id="fileName"></span></h2>
-        <input type="password" id="key" placeholder="Clé de décryptage">
-        <button onclick="decryptFile()">Accéder</button>
-        <hr>
-        <pre id="content" style="white-space: pre-wrap; word-break: break-all;">[En attente de déchiffrement...]</pre>
+<body style="background:#050505; color:#20c20e; font-family: 'Courier New', monospace; text-align:center;">
+    <div style="margin-top:15%;">
+        <h2 id="status">SYSTÈME CHIFFRÉ</h2>
+        <input type="password" id="k" placeholder="Token d'accès" style="background:#000; color:#20c20e; border:1px solid #20c20e; padding:10px;">
+        <button onclick="check()">DÉCRYPTER</button>
+        <pre id="out" style="margin-top:20px; color:red;"></pre>
     </div>
 
     <script>
+        // Hash SHA-256 de "Nitro-77-X" pour vérification silencieuse
+        const _h = "8e52a9254331046182c44937229560f471e988220677a28e9324634358a98394";
         const params = new URLSearchParams(window.location.search);
-        const filePath = params.get('file'); // Récupère le chemin depuis l'URL
-        document.getElementById('fileName').innerText = filePath || "Aucun fichier spécifié";
+        const file = params.get('file');
 
-        async function decryptFile() {
-            if (!filePath) return alert("Pas de fichier dans l'URL");
-            const password = document.getElementById('key').value;
-            const display = document.getElementById('content');
+        async function check() {
+            const input = document.getElementById('k').value;
+            const hashedInput = CryptoJS.SHA256(input).toString();
+            const out = document.getElementById('out');
 
-            try {
-                const response = await fetch(filePath);
-                const encryptedData = await response.text();
+            if (hashedInput === _h) {
+                if(!file) { out.innerText = "Clé valide. Aucun fichier spécifié (?file=...)"; return; }
                 
-                // Tentative de décryptage AES
-                const decrypted = CryptoJS.AES.decrypt(encryptedData, password).toString(CryptoJS.enc.Utf8);
-
-                if (!decrypted) {
-                    // Si la clé est mauvaise, affiche des données "corrompues"
-                    display.innerText = "ERREUR_DATA_CORRUPTED: " + btoa(encryptedData).substring(0, 500) + "...";
-                    display.style.color = "red";
-                } else {
-                    display.innerText = decrypted;
-                    display.style.color = "#00ff00";
+                try {
+                    const res = await fetch(file);
+                    const data = await res.text();
+                    const decrypted = CryptoJS.AES.decrypt(data, input).toString(CryptoJS.enc.Utf8);
+                    
+                    if (decrypted) {
+                        document.body.innerHTML = `<div style="padding:20px; text-align:left;">${decrypted}</div>`;
+                    } else {
+                        throw "fail";
+                    }
+                } catch(e) {
+                    out.innerText = "ERREUR: Données corrompues ou fichier introuvable.";
                 }
-            } catch (e) {
-                display.innerText = "FATAL_ERROR: Fichier inaccessible ou corrompu.";
+            } else {
+                // Simulation de corruption
+                out.innerText = "ACCÈS REFUSÉ: " + btoa(Math.random()).substring(0, 64);
             }
         }
     </script>
