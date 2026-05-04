@@ -50,7 +50,7 @@ const phrases = [
   {
     level: "difficile",
     text: "La lumière danse encore",
-    syllables: 7,
+    syllables: 9,
     split: ["La","lu","miè","re","dan","se","en","co","re"],
     hint: "Attention aux e internes",
     rule: "certains e comptent selon le rythme"
@@ -58,7 +58,7 @@ const phrases = [
   {
     level: "difficile",
     text: "Une flamme éclaire la nuit",
-    syllables: 7,
+    syllables: 9,
     split: ["U","ne","flam","me","é","clai","re","la","nuit"],
     hint: "enchaînement voyelle",
     rule: "élision du e devant voyelle"
