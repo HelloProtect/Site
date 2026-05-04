@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>🎭 E muet Trainer</title>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at top, #1a1a2e, #0f0f1a);
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+      color: white;
+    }
+
+    h1 { font-size: 32px; }
+
+    .box {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(15px);
+      padding: 30px;
+      border-radius: 25px;
+      max-width: 700px;
+      margin: auto;
+      box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    }
+
+    #phrase {
+      font-size: 24px;
+      margin-bottom: 15px;
+    }
+
+    input {
+      width: 90px;
+      padding: 12px;
+      font-size: 18px;
+      border-radius: 10px;
+      border: none;
+      text-align: center;
+    }
+
+    button {
+      margin: 10px;
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      color: white;
+    }
+
+    #result { margin-top: 15px; font-weight: bold; }
+
+    .syllable span {
+      font-weight: bold;
+      padding: 4px;
+      font-size: 18px;
+    }
+
+  </style>
+</head>
+<body>
+
+<h1>🎭 E MUET TRAINER</h1>
+
+<div class="box">
+  <div id="score">Score : 0</div>
+  <p id="phrase">...</p>
+
+  <input type="number" id="answer" placeholder="?">
+  <br>
+
+  <button onclick="checkAnswer()">Vérifier</button>
+  <button onclick="newPhrase()">Next</button>
+
+  <div id="result"></div>
+  <div id="hint"></div>
+  <div id="rule"></div>
+</div>
+
+<!-- 🔗 Lien vers le fichier data.js -->
+<script src="data.js"></script>
+
+<script>
+let score = 0;
+let current = null;
+
+function newPhrase() {
+  current = phrases[Math.floor(Math.random() * phrases.length)];
+  document.getElementById("phrase").textContent = current.text;
+  document.getElementById("result").textContent = "";
+  document.getElementById("hint").textContent = "";
+  document.getElementById("rule").textContent = "";
+  document.getElementById("answer").value = "";
+}
+
+function colorSyllables(syllables) {
+  return '<div class="syllable">' + syllables.map((s, i) =>
+    `<span style="color:hsl(${i * 50},100%,60%)">${s}</span>`
+  ).join(' ') + '</div>';
+}
+
+function checkAnswer() {
+  const userAnswer = parseInt(document.getElementById("answer").value);
+
+  if (userAnswer === current.syllables) {
+    score++;
+    document.getElementById("result").textContent = "✅ Correct";
+  } else {
+    score--;
+    document.getElementById("result").innerHTML = "❌ " + current.syllables + colorSyllables(current.split);
+    document.getElementById("hint").textContent = "💡 " + current.hint;
+    document.getElementById("rule").textContent = "📚 " + current.rule;
+  }
+
+  document.getElementById("score").textContent = "Score : " + score;
+}
+
+newPhrase();
+</script>
+
+</body>
+</html>
