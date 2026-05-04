@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Accès Sécurisé</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body style="background:#1a1a1a; color:#00ff00; font-family: monospace; padding: 20px;">
+    <div id="app">
+        <h2>Fichier : <span id="fileName"></span></h2>
+        <input type="password" id="key" placeholder="Clé de décryptage">
+        <button onclick="decryptFile()">Accéder</button>
+        <hr>
+        <pre id="content" style="white-space: pre-wrap; word-break: break-all;">[En attente de déchiffrement...]</pre>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const filePath = params.get('file'); // Récupère le chemin depuis l'URL
+        document.getElementById('fileName').innerText = filePath || "Aucun fichier spécifié";
+
+        async function decryptFile() {
+            if (!filePath) return alert("Pas de fichier dans l'URL");
+            const password = document.getElementById('key').value;
+            const display = document.getElementById('content');
+
+            try {
+                const response = await fetch(filePath);
+                const encryptedData = await response.text();
+                
+                // Tentative de décryptage AES
+                const decrypted = CryptoJS.AES.decrypt(encryptedData, password).toString(CryptoJS.enc.Utf8);
+
+                if (!decrypted) {
+                    // Si la clé est mauvaise, affiche des données "corrompues"
+                    display.innerText = "ERREUR_DATA_CORRUPTED: " + btoa(encryptedData).substring(0, 500) + "...";
+                    display.style.color = "red";
+                } else {
+                    display.innerText = decrypted;
+                    display.style.color = "#00ff00";
+                }
+            } catch (e) {
+                display.innerText = "FATAL_ERROR: Fichier inaccessible ou corrompu.";
+            }
+        }
+    </script>
+</body>
+</html>
